@@ -16,6 +16,8 @@ public class HomeController {
     @Autowired
     private MovieService movieService;
 
+    // TODO: functions are to be changed, most especially the mappings
+
     @RequestMapping(value = {"/", ""}, method = RequestMethod.GET)
     public List<Movie> getAllMovies() {
         return movieService.getAllMovies();
