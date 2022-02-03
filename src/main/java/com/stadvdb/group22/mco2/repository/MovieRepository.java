@@ -34,13 +34,13 @@ public class MovieRepository {
 
     public List<Movie> getAllMoviesBefore1980s() {
         // get all movies from node 2 (movies produced before 1980s)
-        List<Movie> movies = node2.query("SELECT * FROM movies_b1980", new MovieRowMapper());
+        List<Movie> movies = node2.query("SELECT * FROM movies", new MovieRowMapper());
         return movies;
     }
 
     public List<Movie> getAllMoviesOnAndAfter1980s() {
         // get all movies from node 3 (movies produced on and after 1980s)
-        List<Movie> movies = node3.query("SELECT * FROM movies_a1980", new MovieRowMapper());
+        List<Movie> movies = node3.query("SELECT * FROM movies", new MovieRowMapper());
         return movies;
     }
 
@@ -52,8 +52,12 @@ class MovieRowMapper implements RowMapper<Movie> {
     public Movie mapRow(ResultSet rs, int rowNum) throws SQLException {
         Movie movie = new Movie();
         movie.setId(rs.getInt("id"));
-        movie.setName(rs.getString("name"));
-        movie.setYear(rs.getInt("year"));
+        movie.setTitle(rs.getString("title"));
+        movie.setYear(rs.getInt("yr"));
+        movie.setGenre(rs.getString("genre"));
+        movie.setDirector(rs.getString("director"));
+        movie.setActor1(rs.getString("actor1"));
+        movie.setActor2(rs.getString("actor2"));
         return movie;
     }
 

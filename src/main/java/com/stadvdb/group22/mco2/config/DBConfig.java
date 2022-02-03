@@ -44,4 +44,5 @@ public class DBConfig {
     public JdbcTemplate node3Jdbc(@Qualifier("node3") DataSource datasource) {
         return new JdbcTemplate(datasource);
     }
+
 }
