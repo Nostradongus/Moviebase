@@ -17,10 +17,12 @@ public class MovieService {
         return movieRepository.getAllMovies();
     }
 
+    // TODO: temporary, to be removed
     public List<Movie> getAllMoviesBefore1980s() {
         return movieRepository.getAllMoviesBefore1980s();
     }
 
+    // TODO: temporary, to be removed
     public List<Movie> getAllMoviesOnAndAfter1980s() {
         return movieRepository.getAllMoviesOnAndAfter1980s();
     }

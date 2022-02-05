@@ -16,18 +16,18 @@ public class HomeController {
     @Autowired
     private MovieService movieService;
 
-    // TODO: functions are to be changed, most especially the mappings
-
     @RequestMapping(value = {"/", ""}, method = RequestMethod.GET)
     public List<Movie> getAllMovies() {
         return movieService.getAllMovies();
     }
 
+    // TODO: temporary, to be removed
     @RequestMapping(value = "/node2", method = RequestMethod.GET)
     public List<Movie> getAllMoviesBefore1980s() {
         return movieService.getAllMoviesBefore1980s();
     }
 
+    // TODO: temporary, to be removed
     @RequestMapping(value = "/node3", method = RequestMethod.GET)
     public List<Movie> getAllMoviesOnAndAfter1980s() {
         return movieService.getAllMoviesOnAndAfter1980s();

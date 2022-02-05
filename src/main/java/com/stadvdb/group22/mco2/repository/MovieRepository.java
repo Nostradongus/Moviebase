@@ -32,12 +32,14 @@ public class MovieRepository {
         return movies;
     }
 
+    // TODO: temporary, to be removed
     public List<Movie> getAllMoviesBefore1980s() {
         // get all movies from node 2 (movies produced before 1980s)
         List<Movie> movies = node2.query("SELECT * FROM movies", new MovieRowMapper());
         return movies;
     }
 
+    // TODO: temporary, to be removed
     public List<Movie> getAllMoviesOnAndAfter1980s() {
         // get all movies from node 3 (movies produced on and after 1980s)
         List<Movie> movies = node3.query("SELECT * FROM movies", new MovieRowMapper());
