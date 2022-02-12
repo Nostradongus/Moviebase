@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -187,6 +188,15 @@ public class Node1Repository {
                 }
             }
         });
+    }
+
+    public Movie getMovieByID(int id) {
+        // query will involve writing operation
+        txTemplate.setReadOnly(true);
+        // execute query
+        String sqlQuery = "SELECT * FROM movies WHERE id=?";
+        List<Movie> movies = node1.query (sqlQuery, new Object[]{ id }, new MovieRowMapper ());
+        return movies.size () > 0 ? movies.get(0) : null;
     }
 
 }

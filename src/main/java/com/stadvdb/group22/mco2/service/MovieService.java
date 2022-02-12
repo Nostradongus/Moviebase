@@ -52,4 +52,8 @@ public class MovieService {
         node1Repo.deleteMovie(movie);
     }
 
+    public Movie getMovieByID (int id) {
+        return node1Repo.getMovieByID(id);
+    }
+
 }
