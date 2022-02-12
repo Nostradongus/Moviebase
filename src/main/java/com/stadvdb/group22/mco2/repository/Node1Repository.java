@@ -16,6 +16,8 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -37,10 +39,10 @@ public class Node1Repository {
     // - [X] Add a new movie record
     // - [X] Update an existing movie record
     // - [X] Delete a movie record
-    // - [X] Display how many movies were produced in each genre
-    // - [X] Display how many movies were produced by each director
-    // - [X] Display how many movies each actor starred in
-    // - [X] Display how many movies were produced in each year
+    // - [ ] Display how many movies were produced in each genre
+    // - [ ] Display how many movies were produced by each director
+    // - [ ] Display how many movies each actor starred in
+    // - [ ] Display how many movies were produced in each year
 
     public Page<Movie> getMoviesByPage(Pageable pageable) throws TransactionException {
         // query will be reading data only
@@ -186,6 +188,15 @@ public class Node1Repository {
                 }
             }
         });
+    }
+
+    public Movie getMovieByID(int id) {
+        // query will involve writing operation
+        txTemplate.setReadOnly(true);
+        // execute query
+        String sqlQuery = "SELECT * FROM movies WHERE id=?";
+        List<Movie> movies = node1.query (sqlQuery, new Object[]{ id }, new MovieRowMapper ());
+        return movies.size () > 0 ? movies.get(0) : null;
     }
 
 }
