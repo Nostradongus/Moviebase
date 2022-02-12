@@ -2,33 +2,25 @@ package com.stadvdb.group22.mco2.model;
 
 public class Movie {
 
-    private Integer id;
     private String title;
     private Integer year;
     private String genre;
     private String director;
     private String actor1;
     private String actor2;
+    private String uuid;
 
     public Movie() {}
 
-    public Movie(Integer id, String title, Integer year, String genre,
-                 String director, String actor1, String actor2) {
-        this.id = id;
+    public Movie(String title, Integer year, String genre,
+                 String director, String actor1, String actor2, String uuid) {
         this.title = title;
         this.year = year;
         this.genre = genre;
         this.director = director;
         this.actor1 = actor1;
         this.actor2 = actor2;
-    }
-
-    public Integer getId() {
-        return this.id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
+        this.uuid = uuid;
     }
 
     public Integer getYear() {
@@ -49,6 +41,14 @@ public class Movie {
 
     public String getGenre() {
         return genre;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 
     public void setGenre(String genre) {

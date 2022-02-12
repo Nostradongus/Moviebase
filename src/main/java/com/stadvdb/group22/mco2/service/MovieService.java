@@ -15,32 +15,32 @@ public class MovieService {
     @Autowired
     private Node1Repository node1Repo;
 
-    public Page<Movie> getMoviesByPage(int page, int size) throws TransactionException {
+    public Page<Movie> getMoviesByPage(int page, int size) {
         return node1Repo.getMoviesByPage(PageRequest.of(page, size));
     }
 
     public Page<Movie> searchMoviesByPage(String year, String title, String genre,
-                                    String actor, String director, int page, int size) throws TransactionException {
+                                    String actor, String director, int page, int size) {
         return node1Repo.searchMoviesByPage(year, title, genre, actor, director, PageRequest.of(page, size));
     }
 
-    public Page<Report> getMoviesPerGenreByPage(int page, int size) throws TransactionException {
+    public Page<Report> getMoviesPerGenreByPage(int page, int size) {
         return node1Repo.getMoviesPerGenreByPage(PageRequest.of(page, size));
     }
 
-    public Page<Report> getMoviesPerDirectorByPage(int page, int size) throws TransactionException {
+    public Page<Report> getMoviesPerDirectorByPage(int page, int size) {
         return node1Repo.getMoviesPerDirectorByPage(PageRequest.of(page, size));
     }
 
-    public Page<Report> getMoviesPerActorByPage(int page, int size) throws TransactionException {
+    public Page<Report> getMoviesPerActorByPage(int page, int size) {
         return node1Repo.getMoviesPerActorByPage(PageRequest.of(page, size));
     }
 
-    public Page<Report> getMoviesPerYearByPage(int page, int size) throws TransactionException {
+    public Page<Report> getMoviesPerYearByPage(int page, int size) {
         return node1Repo.getMoviesPerYearByPage(PageRequest.of(page, size));
     }
 
-    public void addMovie(Movie movie) throws TransactionException {
+    public void addMovie(Movie movie) {
         node1Repo.addMovie(movie);
     }
 
@@ -52,8 +52,8 @@ public class MovieService {
         node1Repo.deleteMovie(movie);
     }
 
-    public Movie getMovieByID (int id) {
-        return node1Repo.getMovieByID(id);
+    public Movie getMovieByUUID (String uuid) {
+        return node1Repo.getMovieByUUID(uuid);
     }
 
 }

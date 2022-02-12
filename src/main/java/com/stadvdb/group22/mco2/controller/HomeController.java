@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 public class HomeController {
@@ -66,6 +67,7 @@ public class HomeController {
         movie.setActor1(movie.getActor1().trim());
         movie.setActor2(movie.getActor2().trim());
         movie.setDirector(movie.getDirector().trim());
+        movie.setUuid(UUID.randomUUID().toString());
 
         movieService.addMovie(movie);
     }

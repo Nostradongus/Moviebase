@@ -1,16 +1,27 @@
 package com.stadvdb.group22.mco2.config;
 
+import com.atomikos.icatch.jta.UserTransactionImp;
+import com.atomikos.icatch.jta.UserTransactionManager;
+import com.atomikos.jdbc.AtomikosDataSourceBean;
+import com.mysql.cj.jdbc.MysqlXADataSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionManager;
+import org.springframework.transaction.jta.JtaTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
+import javax.transaction.UserTransaction;
+import java.sql.SQLException;
 
 @Configuration
 public class DBConfig {
@@ -20,6 +31,45 @@ public class DBConfig {
 
     // CHANGE TRANSACTION TIMEOUT VALUE HERE
     public static final int TIME_OUT = 30;
+
+    @Autowired
+    private Environment env;
+
+//    @Bean(name="node1", initMethod = "init", destroyMethod = "close")
+//    public DataSource node1() throws SQLException {
+//        MysqlXADataSource mysqlXADataSource = new MysqlXADataSource();
+//        mysqlXADataSource.setUrl(this.env.getProperty("spring.node1.jdbcUrl"));
+//        mysqlXADataSource.setPinGlobalTxToPhysicalConnection(true);
+//        mysqlXADataSource.setUser(this.env.getProperty("spring.node1.username"));
+//        mysqlXADataSource.setPassword(this.env.getProperty("spring.node1.password"));
+//
+//        AtomikosDataSourceBean xaDataSource = new AtomikosDataSourceBean();
+//        xaDataSource.setXaDataSource(mysqlXADataSource);
+//        xaDataSource.setUniqueResourceName("ds_node1");
+//
+//        return xaDataSource;
+//    }
+//
+//    @Bean(name = "userTransaction")
+//    public UserTransaction userTransaction() throws Exception {
+//        UserTransactionImp userTransactionImp = new UserTransactionImp();
+//        userTransactionImp.setTransactionTimeout(TIME_OUT);
+//        return userTransactionImp;
+//    }
+//
+//    @Bean(name = "atomikosTxManager", initMethod = "init", destroyMethod = "close")
+//    public TransactionManager transactionManager() throws Exception {
+//        UserTransactionManager userTransactionManager = new UserTransactionManager();
+//        userTransactionManager.setForceShutdown(false);
+//        userTransactionManager.setTransactionTimeout(TIME_OUT);
+//        return (TransactionManager) userTransactionManager;
+//    }
+//
+//    @Bean(name = "globalTxManager")
+//    public JtaTransactionManager globalTxManager(@Qualifier("userTransaction") UserTransaction userTransaction, @Qualifier("atomikosTxManager") UserTransactionManager txManager) {
+//        JtaTransactionManager jtaTransactionManager = new JtaTransactionManager(userTransaction, txManager);
+//        return jtaTransactionManager;
+//    }
 
     /***** NODE 1 / CENTRAL NODE CONFIGURATIONS *****/
     @Bean(name="node1")
