@@ -37,10 +37,10 @@ public class Node1Repository {
     // - [X] Add a new movie record
     // - [X] Update an existing movie record
     // - [X] Delete a movie record
-    // - [ ] Display how many movies were produced in each genre
-    // - [ ] Display how many movies were produced by each director
-    // - [ ] Display how many movies each actor starred in
-    // - [ ] Display how many movies were produced in each year
+    // - [X] Display how many movies were produced in each genre
+    // - [X] Display how many movies were produced by each director
+    // - [X] Display how many movies each actor starred in
+    // - [X] Display how many movies were produced in each year
 
     public Page<Movie> getMoviesByPage(Pageable pageable) throws TransactionException {
         // query will be reading data only
