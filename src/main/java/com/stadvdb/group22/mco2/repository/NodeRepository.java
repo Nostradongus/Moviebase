@@ -10,14 +10,13 @@ import java.sql.SQLException;
 
 public interface NodeRepository {
 
-    void connect() throws SQLException;
+    void tryConnection() throws SQLException;
 
     Movie getMovieByUUID(String uuid) throws DataAccessException;
 
     Page<Movie> getMoviesByPage(Pageable pageable) throws DataAccessException;
 
-    Page<Movie> searchMoviesByPage(String year, String title, String genre,
-                                   String actor, String director, Pageable page) throws DataAccessException;
+    Page<Movie> searchMoviesByPage(Movie movie, Pageable page) throws DataAccessException;
 
     Page<Report> getMoviesPerGenreByPage(Pageable pageable) throws DataAccessException;
 

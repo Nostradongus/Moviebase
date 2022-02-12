@@ -21,22 +21,21 @@ import java.sql.*;
 import java.util.List;
 
 @Repository
-public class Node1Repository implements NodeRepository {
-
-    // transaction manager for node 1, needed to set isolation level
+public class Node2Repository implements NodeRepository {
+    // transaction manager for node 2, needed to set isolation level
     @Autowired
-    @Qualifier("node1TxTemplate")
+    @Qualifier("node2TxTemplate")
     private TransactionTemplate txTemplate;
 
-    // JDBC data source connection to central node / node 1
+    // JDBC data source connection to node 2
     @Autowired
-    @Qualifier("node1Jdbc")
-    private JdbcTemplate node1;
+    @Qualifier("node2Jdbc")
+    private JdbcTemplate node2;
 
     public void tryConnection() throws SQLException {
         // try connection to database, if database is down then throw SQLException
         DriverManager.setLoginTimeout(5);
-        Connection connection = DriverManager.getConnection(DBConfig.node1Url, DBConfig.node1Username, DBConfig.node1Password);
+        Connection connection = DriverManager.getConnection(DBConfig.node2Url, DBConfig.node2Username, DBConfig.node2Password);
 
         // close connection afterwards if successful
         connection.close();
@@ -46,7 +45,7 @@ public class Node1Repository implements NodeRepository {
         // execute transaction
         return txTemplate.execute(status -> {
             String sqlQuery = "SELECT * FROM movies WHERE uuid=?";
-            List<Movie> movies = node1.query (sqlQuery, new MovieRowMapper(), uuid);
+            List<Movie> movies = node2.query (sqlQuery, new MovieRowMapper(), uuid);
             return movies.size () > 0 ? movies.get(0) : null;
         });
     }
@@ -54,9 +53,9 @@ public class Node1Repository implements NodeRepository {
     public Page<Movie> getMoviesByPage(Pageable pageable) throws TransactionException {
         // execute transaction
         return txTemplate.execute(status -> {
-            int total = node1.queryForObject("SELECT COUNT(*) FROM movies", Integer.class);
+            int total = node2.queryForObject("SELECT COUNT(*) FROM movies", Integer.class);
             String sqlQuery = "SELECT * FROM movies LIMIT " + pageable.getPageSize() + " OFFSET " + pageable.getOffset();
-            List<Movie> movies = node1.query(sqlQuery, new MovieRowMapper());
+            List<Movie> movies = node2.query(sqlQuery, new MovieRowMapper());
             return new PageImpl<>(movies, pageable, total);
         });
     }
@@ -72,8 +71,8 @@ public class Node1Repository implements NodeRepository {
                     append("genre = COALESCE(" + movie.getGenre() + ", genre) AND ").
                     append("((actor1 = COALESCE(" + movie.getActor1() +  ", actor1)) OR (actor2 = COALESCE(" + movie.getActor1() + ", actor2))) AND ").
                     append("director = COALESCE(" + movie.getDirector() + ", director)");
-            int total = node1.queryForObject("SELECT COUNT(*)" + sqlQuery.toString(), Integer.class);
-            List<Movie> movies = node1.query(
+            int total = node2.queryForObject("SELECT COUNT(*)" + sqlQuery.toString(), Integer.class);
+            List<Movie> movies = node2.query(
                     "SELECT *" + sqlQuery.toString() + " LIMIT " + pageable.getPageSize() + " OFFSET " + pageable.getOffset(),
                     new MovieRowMapper()
             );
@@ -84,9 +83,9 @@ public class Node1Repository implements NodeRepository {
     public Page<Report> getMoviesPerGenreByPage(Pageable pageable) throws TransactionException {
         // execute transaction
         return txTemplate.execute(status -> {
-            int total = node1.queryForObject("SELECT COUNT(DISTINCT genre) FROM movies", Integer.class);
+            int total = node2.queryForObject("SELECT COUNT(DISTINCT genre) FROM movies", Integer.class);
             String sqlQuery = "SELECT genre AS label, COUNT(*) AS count FROM movies GROUP BY genre LIMIT " + pageable.getPageSize() + " OFFSET " + pageable.getOffset();
-            List<Report> reports = node1.query(sqlQuery, new ReportRowMapper());
+            List<Report> reports = node2.query(sqlQuery, new ReportRowMapper());
             return new PageImpl<>(reports, pageable, total);
         });
     }
@@ -94,9 +93,9 @@ public class Node1Repository implements NodeRepository {
     public Page<Report> getMoviesPerDirectorByPage(Pageable pageable) throws TransactionException {
         // execute transaction
         return txTemplate.execute(status -> {
-            int total = node1.queryForObject("SELECT COUNT(DISTINCT director) FROM movies", Integer.class);
+            int total = node2.queryForObject("SELECT COUNT(DISTINCT director) FROM movies", Integer.class);
             String sqlQuery = "SELECT director AS label, COUNT(*) AS count FROM movies GROUP BY director LIMIT " + pageable.getPageSize() + " OFFSET " + pageable.getOffset();
-            List<Report> reports = node1.query(sqlQuery, new ReportRowMapper());
+            List<Report> reports = node2.query(sqlQuery, new ReportRowMapper());
             return new PageImpl<>(reports, pageable, total);
         });
     }
@@ -104,9 +103,9 @@ public class Node1Repository implements NodeRepository {
     public Page<Report> getMoviesPerActorByPage(Pageable pageable) throws TransactionException {
         // execute transaction
         return txTemplate.execute(status -> {
-            int total = node1.queryForObject("SELECT COUNT(DISTINCT actor1) FROM movies", Integer.class);
+            int total = node2.queryForObject("SELECT COUNT(DISTINCT actor1) FROM movies", Integer.class);
             String sqlQuery = "SELECT actor1 AS label, COUNT(*) AS count FROM movies GROUP BY actor1 LIMIT " + pageable.getPageSize() + " OFFSET " + pageable.getOffset();
-            List<Report> reports = node1.query(sqlQuery, new ReportRowMapper());
+            List<Report> reports = node2.query(sqlQuery, new ReportRowMapper());
             return new PageImpl<>(reports, pageable, total);
         });
     }
@@ -114,9 +113,9 @@ public class Node1Repository implements NodeRepository {
     public Page<Report> getMoviesPerYearByPage(Pageable pageable) throws TransactionException {
         // execute transaction
         return txTemplate.execute(status -> {
-            int total = node1.queryForObject("SELECT COUNT(DISTINCT yr) FROM movies", Integer.class);
+            int total = node2.queryForObject("SELECT COUNT(DISTINCT yr) FROM movies", Integer.class);
             String sqlQuery = "SELECT yr AS label, COUNT(*) AS count FROM movies GROUP BY yr LIMIT " + pageable.getPageSize() + " OFFSET " + pageable.getOffset();
-            List<Report> reports = node1.query(sqlQuery, new ReportRowMapper());
+            List<Report> reports = node2.query(sqlQuery, new ReportRowMapper());
             return new PageImpl<>(reports, pageable, total);
         });
     }
@@ -128,7 +127,7 @@ public class Node1Repository implements NodeRepository {
             protected void doInTransactionWithoutResult(TransactionStatus status) {
                 try {
                     String sqlQuery = "INSERT INTO movies (title, yr, genre, actor1, actor2, director, uuid) VALUES (?, ?, ?, ?, ?, ?, ?)";
-                    node1.execute(sqlQuery, new PreparedStatementCallback<Boolean>() {
+                    node2.execute(sqlQuery, new PreparedStatementCallback<Boolean>() {
                         @Override
                         public Boolean doInPreparedStatement(PreparedStatement ps) throws SQLException, DataAccessException {
                             ps.setString(1, movie.getTitle());
@@ -160,7 +159,7 @@ public class Node1Repository implements NodeRepository {
             protected void doInTransactionWithoutResult(TransactionStatus status) {
                 try {
                     String sqlQuery = "UPDATE movies SET title=?, yr=?, genre=?, actor1=?, actor2=?, director=? WHERE uuid=?";
-                    node1.execute(sqlQuery, new PreparedStatementCallback<Boolean>() {
+                    node2.execute(sqlQuery, new PreparedStatementCallback<Boolean>() {
                         @Override
                         public Boolean doInPreparedStatement(PreparedStatement ps) throws SQLException, DataAccessException {
                             ps.setString(1, movie.getTitle());
@@ -192,7 +191,7 @@ public class Node1Repository implements NodeRepository {
             protected void doInTransactionWithoutResult(TransactionStatus status) {
                 try {
                     String sqlQuery = "DELETE FROM movies WHERE uuid=?";
-                    node1.update(sqlQuery, movie.getUuid());
+                    node2.update(sqlQuery, movie.getUuid());
                 } catch (Exception e) {
                     // rollback due to failure
                     status.setRollbackOnly();
@@ -200,5 +199,4 @@ public class Node1Repository implements NodeRepository {
             }
         });
     }
-
 }
