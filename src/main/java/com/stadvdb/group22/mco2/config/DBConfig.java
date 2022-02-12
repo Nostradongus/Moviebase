@@ -25,51 +25,13 @@ import java.sql.SQLException;
 
 @Configuration
 public class DBConfig {
+    // TODO: TransactionTemplate configs might be removed as DataSourceTransactionManager is enough
 
     // CHANGE TRANSACTION ISOLATION LEVEL HERE
     public static final int ISOLATION_LEVEL = TransactionDefinition.ISOLATION_READ_UNCOMMITTED;
 
     // CHANGE TRANSACTION TIMEOUT VALUE HERE
     public static final int TIME_OUT = 30;
-
-    @Autowired
-    private Environment env;
-
-//    @Bean(name="node1", initMethod = "init", destroyMethod = "close")
-//    public DataSource node1() throws SQLException {
-//        MysqlXADataSource mysqlXADataSource = new MysqlXADataSource();
-//        mysqlXADataSource.setUrl(this.env.getProperty("spring.node1.jdbcUrl"));
-//        mysqlXADataSource.setPinGlobalTxToPhysicalConnection(true);
-//        mysqlXADataSource.setUser(this.env.getProperty("spring.node1.username"));
-//        mysqlXADataSource.setPassword(this.env.getProperty("spring.node1.password"));
-//
-//        AtomikosDataSourceBean xaDataSource = new AtomikosDataSourceBean();
-//        xaDataSource.setXaDataSource(mysqlXADataSource);
-//        xaDataSource.setUniqueResourceName("ds_node1");
-//
-//        return xaDataSource;
-//    }
-//
-//    @Bean(name = "userTransaction")
-//    public UserTransaction userTransaction() throws Exception {
-//        UserTransactionImp userTransactionImp = new UserTransactionImp();
-//        userTransactionImp.setTransactionTimeout(TIME_OUT);
-//        return userTransactionImp;
-//    }
-//
-//    @Bean(name = "atomikosTxManager", initMethod = "init", destroyMethod = "close")
-//    public TransactionManager transactionManager() throws Exception {
-//        UserTransactionManager userTransactionManager = new UserTransactionManager();
-//        userTransactionManager.setForceShutdown(false);
-//        userTransactionManager.setTransactionTimeout(TIME_OUT);
-//        return (TransactionManager) userTransactionManager;
-//    }
-//
-//    @Bean(name = "globalTxManager")
-//    public JtaTransactionManager globalTxManager(@Qualifier("userTransaction") UserTransaction userTransaction, @Qualifier("atomikosTxManager") UserTransactionManager txManager) {
-//        JtaTransactionManager jtaTransactionManager = new JtaTransactionManager(userTransaction, txManager);
-//        return jtaTransactionManager;
-//    }
 
     /***** NODE 1 / CENTRAL NODE CONFIGURATIONS *****/
     @Bean(name="node1")
@@ -78,14 +40,15 @@ public class DBConfig {
         return DataSourceBuilder.create().build();
     }
 
+    @Bean(name="node1TxManager")
+    public DataSourceTransactionManager node1TxManager(@Qualifier("node1") DataSource datasource) {
+        DataSourceTransactionManager txManager = new DataSourceTransactionManager(datasource);
+        return new DataSourceTransactionManager(datasource);
+    }
+
     @Bean(name="node1Jdbc")
     public JdbcTemplate node1Jdbc(@Qualifier("node1") DataSource datasource) {
         return new JdbcTemplate(datasource);
-    }
-
-    @Bean(name="node1TxManager")
-    public DataSourceTransactionManager node1TxManager(@Qualifier("node1") DataSource datasource) {
-        return new DataSourceTransactionManager(datasource);
     }
 
     @Bean(name="node1TxTemplate")
