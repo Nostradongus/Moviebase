@@ -21,7 +21,7 @@ import java.sql.*;
 import java.util.List;
 
 @Repository
-public class Node3Repository {
+public class Node3Repository implements NodeRepository {
     // transaction manager for node 3, needed to set isolation level
     @Autowired
     @Qualifier("node3TxTemplate")
@@ -147,6 +147,7 @@ public class Node3Repository {
                 } catch (Exception e) {
                     // rollback due to failure
                     status.setRollbackOnly();
+                    throw e;
                 }
             }
         });
@@ -179,6 +180,7 @@ public class Node3Repository {
                 } catch (Exception e) {
                     // rollback due to failure
                     status.setRollbackOnly();
+                    throw e;
                 }
             }
         });
@@ -195,6 +197,7 @@ public class Node3Repository {
                 } catch (Exception e) {
                     // rollback due to failure
                     status.setRollbackOnly();
+                    throw e;
                 }
             }
         });

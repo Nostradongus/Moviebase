@@ -147,6 +147,7 @@ public class Node2Repository implements NodeRepository {
                 } catch (Exception e) {
                     // rollback due to failure
                     status.setRollbackOnly();
+                    throw e;
                 }
             }
         });
@@ -179,6 +180,7 @@ public class Node2Repository implements NodeRepository {
                 } catch (Exception e) {
                     // rollback due to failure
                     status.setRollbackOnly();
+                    throw e;
                 }
             }
         });
@@ -195,6 +197,7 @@ public class Node2Repository implements NodeRepository {
                 } catch (Exception e) {
                     // rollback due to failure
                     status.setRollbackOnly();
+                    throw e;
                 }
             }
         });

@@ -101,7 +101,10 @@ public class HomeController {
     }
 
     @RequestMapping(value = "/delete", method = RequestMethod.DELETE)
-    public void deleteMovie(Movie movie) {
+    public void deleteMovie(@RequestParam String uuid, @RequestParam int year) {
+        Movie movie = new Movie();
+        movie.setUuid(uuid);
+        movie.setYear(year);
         distributedDBService.deleteMovie(movie);
     }
 
