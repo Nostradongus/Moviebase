@@ -10,7 +10,8 @@ public class Movie {
     private String actor2;
     private String uuid;
 
-    public Movie() {}
+    public Movie() {
+    }
 
     public Movie(String title, Integer year, String genre,
                  String director, String actor1, String actor2, String uuid) {
@@ -77,5 +78,10 @@ public class Movie {
 
     public void setActor2(String actor2) {
         this.actor2 = actor2;
+    }
+
+    @Override
+    public String toString () {
+        return this.title + "(" + this.year + ")";
     }
 }

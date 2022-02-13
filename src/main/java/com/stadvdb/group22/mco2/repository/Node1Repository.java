@@ -122,6 +122,8 @@ public class Node1Repository implements NodeRepository {
     }
 
     public void addMovie(Movie movie) throws TransactionException {
+        System.out.println ("ATTEMPTING INSERTION! " + movie.toString());
+
         // execute transaction
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
@@ -145,8 +147,11 @@ public class Node1Repository implements NodeRepository {
                             return ps.execute();
                         }
                     });
+
+                    System.out.println ("INSERTED! " + movie.toString());
                 } catch (Exception e) {
                     // rollback due to failure
+                    e.printStackTrace();
                     status.setRollbackOnly();
                 }
             }
