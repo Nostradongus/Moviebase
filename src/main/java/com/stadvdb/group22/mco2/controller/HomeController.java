@@ -31,10 +31,11 @@ public class HomeController {
 
     @RequestMapping(value = {"/movies/p/{pageNum}", ""}, method = RequestMethod.GET)
     public String getHomePage(Model model, @PathVariable int pageNum, @RequestParam(defaultValue = "5") int size) {
-        int totalPages = distributedDBService.getMoviesByPage(1, size).getTotalPages();
+        Page<Movie> movies = distributedDBService.getMoviesByPage(pageNum - 1, size);
+        int totalPages = movies.getTotalPages();
 
         if (pageNum > 0 && pageNum < totalPages) {
-            model.addAttribute("page", distributedDBService.getMoviesByPage(pageNum - 1, size));
+            model.addAttribute("page", movies);
             model.addAttribute("pageNum", pageNum);
             model.addAttribute("movie", new Movie());
             return "index";

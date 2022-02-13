@@ -20,7 +20,7 @@ public class UpdateMovieController {
             Movie movie = distributedDBService.getMovieByUUID(movieUUID, movieYear);
 
             if (movie != null) {
-                model.addAttribute("movie", distributedDBService.getMovieByUUID(movieUUID, movieYear));
+                model.addAttribute("movie", movie);
                 return "update_movie";
             } else {
                 return "movie_not_found";

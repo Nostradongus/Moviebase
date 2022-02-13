@@ -78,6 +78,7 @@ public class DistributedDBService {
         // try connection to node 1 (central node)
         try {
             node1Repo.tryConnection();
+            System.out.println("getMoviesByPage - Reading and retrieving data from node 1...");
             movies = node1Repo.getMoviesByPage(PageRequest.of(page, size));
         } catch (Exception e) {
             // node 1 is currently down
