@@ -7,12 +7,15 @@ import com.stadvdb.group22.mco2.repository.Node2Repository;
 import com.stadvdb.group22.mco2.repository.Node3Repository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.*;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
@@ -35,14 +38,23 @@ public class DistributedDBService {
     private final int UNAVAILABLE = 1;
     private final int ERROR = 2;
 
+    // distributed database re-sync switch
+    private boolean resyncEnabled = true;
+
     public Movie getMovieByUUID (String uuid, int year) throws Exception {
+        // disable distributed db re-sync before performing operation
+        toggleResyncDB();
+        Movie movie = null;
         // retrieve data from node 2 or 3 depending on year of movie
         if (year < 1980) {
             // try connection to node 2
             try {
                 node2Repo.tryConnection();
                 System.out.println("getMovieByUUID - Reading and retrieving data from node 2...");
-                return node2Repo.getMovieByUUID(uuid);
+                movie = node2Repo.getMovieByUUID(uuid);
+                // enable resync db
+                toggleResyncDB();
+                return movie;
             } catch (Exception e) {
                 // node 2 is currently down
                 System.out.println("getMovieByUUID - Node 2 is currently down...");
@@ -52,7 +64,10 @@ public class DistributedDBService {
             try {
                 node3Repo.tryConnection();
                 System.out.println("getMovieByUUID - Reading and retrieving data from node 3...");
-                return node3Repo.getMovieByUUID(uuid);
+                movie = node3Repo.getMovieByUUID(uuid);
+                // enable resync db
+                toggleResyncDB();
+                return movie;
             } catch (Exception e) {
                 // node 3 is currently down
                 System.out.println("getMovieByUUID - Node 3 is currently down...");
@@ -63,32 +78,73 @@ public class DistributedDBService {
         try {
             node1Repo.tryConnection();
             System.out.println("getMovieByUUID - Reading and retrieving data from node 1...");
-            return node1Repo.getMovieByUUID(uuid);
+            movie = node1Repo.getMovieByUUID(uuid);
+            // enable resync db
+            toggleResyncDB();
+            return movie;
         } catch (Exception e) {
             // node 1 is currently down
-            System.out.println("getMovieByUUID - Node 1 is currently down...");
-            System.out.println("getMovieByUUID - All nodes are currently down...");
+            System.out.println("getMovieByUUID - Node 1 is currently down. Can't retrieve data, throwing exception...");
+            // enable resync db
+            toggleResyncDB();
             throw e;
         }
     }
 
-    public Page<Movie> getMoviesByPage(int page, int size) {
-        Page<Movie> movies = null;
+    public Page<Movie> getMoviesByPage(int page, int size) throws Exception {
+        // disable resync db
+        toggleResyncDB();
 
         // try connection to node 1 (central node)
         try {
+            Page<Movie> movies = null;
             node1Repo.tryConnection();
             System.out.println("getMoviesByPage - Reading and retrieving data from node 1...");
             movies = node1Repo.getMoviesByPage(PageRequest.of(page, size));
+            // enable resync db
+            toggleResyncDB();
+            return movies;
         } catch (Exception e) {
             // node 1 is currently down
             System.out.println("getMoviesByPage - Node 1 is currently down...");
         }
 
-        return movies;
+        // try connection to both node 2 and 3, if at least one is down then cannot perform data retrieval process and throw exception
+        // both node 2 and 3 needs to be available to combine and replicate node 1 database for this specific query
+        try {
+            // try connection to both node 2 and 3
+            node2Repo.tryConnection();
+            node3Repo.tryConnection();
+            // both nodes are available, perform data retrieval process
+            int total = 0;
+            List<Movie> movies = null;
+            System.out.println("getMoviesByPage - Reading and retrieving data from node 2...");
+            total += node2Repo.getNumOfMovies();
+            movies = node2Repo.getMovies();
+            System.out.println("getMoviesByPage - Reading and retrieving data from node 3...");
+            total += node3Repo.getNumOfMovies();
+            movies.addAll(node3Repo.getMovies());
+            // get specific movies for page according to page number and size
+            List<Movie> moviesPage = new ArrayList<>();
+            for (int i = page * size; i < page * size + size; i++) {
+                moviesPage.add(movies.get(i));
+            }
+            // enable resync db
+            toggleResyncDB();
+            return new PageImpl<>(moviesPage, PageRequest.of(page, size), total);
+        } catch (Exception e) {
+            // node 2 or 3 is down, cannot perform data retrieval so throw exception
+            System.out.println("getMoviesByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
+            // enable resync db
+            toggleResyncDB();
+            throw e;
+        }
     }
 
     public Page<Movie> searchMoviesByPage(Movie movie, int page, int size) throws Exception {
+        // disable db resync
+        toggleResyncDB();
+        Page<Movie> movies = null;
         // retrieve data from node 2 or 3 depending on year (if inputted)
         if (movie.getYear() != null) {
             // retrieve data from node 2 if year < 1980
@@ -97,7 +153,10 @@ public class DistributedDBService {
                 try {
                     node2Repo.tryConnection();
                     System.out.println("searchMoviesByPage - Reading and retrieving data from node 2...");
-                    return node2Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
+                    movies = node2Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
+                    // enable resync db
+                    toggleResyncDB();
+                    return movies;
                 } catch (Exception e) {
                     // node 2 is currently down
                     System.out.println("searchMoviesByPage - Node 2 is currently down...");
@@ -107,7 +166,10 @@ public class DistributedDBService {
                 try {
                     node3Repo.tryConnection();
                     System.out.println("searchMoviesByPage - Reading and retrieving data from node 3...");
-                    return node3Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
+                    movies = node3Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
+                    // enable resync db
+                    toggleResyncDB();
+                    return movies;
                 } catch (Exception e) {
                     // node 3 is currently down
                     System.out.println("searchMoviesByPage - Node 3 is currently down...");
@@ -119,28 +181,269 @@ public class DistributedDBService {
         try {
             node1Repo.tryConnection();
             System.out.println("searchMoviesByPage - Reading and retrieving data from node 1...");
-            return node1Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
+            movies = node1Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
+            // enable resync db
+            toggleResyncDB();
+            return movies;
         } catch (Exception e) {
             // node 1 is currently down
             System.out.println("searchMoviesByPage - Node 1 is currently down...");
+            // enable resync db
+            toggleResyncDB();
             throw e;
         }
     }
 
-    public Page<Report> getMoviesPerGenreByPage(int page, int size) {
-        return node1Repo.getMoviesPerGenreByPage(PageRequest.of(page, size));
+    public Page<Report> getMoviesPerGenreByPage(int page, int size) throws Exception {
+        // disable resync db
+        toggleResyncDB();
+
+        // try connection to node 1 (central node)
+        try {
+            Page<Report> reports = null;
+            node1Repo.tryConnection();
+            System.out.println("getMoviesPerGenreByPage - Reading and retrieving data from node 1...");
+            reports = node1Repo.getMoviesPerGenreByPage(PageRequest.of(page, size));
+            // enable resync db
+            toggleResyncDB();
+            return reports;
+        } catch (Exception e) {
+            // node 1 is currently down
+            System.out.println("getMoviesPerGenreByPage - Node 1 is currently down...");
+        }
+
+        // try connection to both node 2 and 3, if at least one is down then cannot perform data retrieval process and throw exception
+        // both node 2 and 3 needs to be available to combine and replicate node 1 database for this specific query
+        try {
+            // try connection to both node 2 and 3
+            node2Repo.tryConnection();
+            node3Repo.tryConnection();
+            // both nodes are available, perform data retrieval process
+            int total = 0;
+            List<Report> reports = null;
+            System.out.println("getMoviesPerGenreByPage - Reading and retrieving data from node 2...");
+            total += node2Repo.getNumOfGenres();
+            reports = node2Repo.getMoviesPerGenre();
+            System.out.println("getMoviesPerGenreByPage - Reading and retrieving data from node 3...");
+            total += node3Repo.getNumOfGenres();
+            List<Report> node3Reports = node3Repo.getMoviesPerGenre();
+            for (int i = 0; i < node3Reports.size(); i++) {
+                // append report to list if it is not found on the current report list, else combine / add count
+                boolean unique = true;
+                for (int j = 0; j < reports.size() && unique; j++) {
+                    if (reports.get(j).getLabel().equalsIgnoreCase(node3Reports.get(i).getLabel())) {
+                        reports.get(j).setCount(reports.get(j).getCount() + node3Reports.get(i).getCount());
+                        unique = false;
+                    }
+                }
+                if (unique) {
+                    reports.add(node3Reports.get(i));
+                }
+            }
+            // get specific reports according to page number and size
+            List<Report> reportsPage = new ArrayList<>();
+            for (int i = page * size; i < page * size + size; i++) {
+                reportsPage.add(reports.get(i));
+            }
+            // enable resync db
+            toggleResyncDB();
+            return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
+        } catch (Exception e) {
+            // node 2 or 3 is down, cannot perform data retrieval so throw exception
+            System.out.println("getMoviesByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
+            // enable resync db
+            toggleResyncDB();
+            throw e;
+        }
     }
 
-    public Page<Report> getMoviesPerDirectorByPage(int page, int size) {
-        return node1Repo.getMoviesPerDirectorByPage(PageRequest.of(page, size));
+    public Page<Report> getMoviesPerDirectorByPage(int page, int size) throws Exception {
+        // disable resync db
+        toggleResyncDB();
+
+        // try connection to node 1 (central node)
+        try {
+            Page<Report> reports = null;
+            node1Repo.tryConnection();
+            System.out.println("getMoviesPerDirectorByPage - Reading and retrieving data from node 1...");
+            reports = node1Repo.getMoviesPerDirectorByPage(PageRequest.of(page, size));
+            // enable resync db
+            toggleResyncDB();
+            return reports;
+        } catch (Exception e) {
+            // node 1 is currently down
+            System.out.println("getMoviesPerDirectorByPage - Node 1 is currently down...");
+        }
+
+        // try connection to both node 2 and 3, if at least one is down then cannot perform data retrieval process and throw exception
+        // both node 2 and 3 needs to be available to combine and replicate node 1 database for this specific query
+        try {
+            // try connection to both node 2 and 3
+            node2Repo.tryConnection();
+            node3Repo.tryConnection();
+            // both nodes are available, perform data retrieval process
+            int total = 0;
+            List<Report> reports = null;
+            System.out.println("getMoviesPerDirectorByPage - Reading and retrieving data from node 2...");
+            total += node2Repo.getNumOfDirectors();
+            reports = node2Repo.getMoviesPerDirector();
+            System.out.println("getMoviesPerDirectorByPage - Reading and retrieving data from node 3...");
+            total += node3Repo.getNumOfDirectors();
+            List<Report> node3Reports = node3Repo.getMoviesPerDirector();
+            for (int i = 0; i < node3Reports.size(); i++) {
+                // append report to list if it is not found on the current report list, else combine / add count
+                boolean unique = true;
+                for (int j = 0; j < reports.size() && unique; j++) {
+                    if (reports.get(j).getLabel().equalsIgnoreCase(node3Reports.get(i).getLabel())) {
+                        reports.get(j).setCount(reports.get(j).getCount() + node3Reports.get(i).getCount());
+                        unique = false;
+                    }
+                }
+                if (unique) {
+                    reports.add(node3Reports.get(i));
+                }
+            }
+            // get specific reports according to page number and size
+            List<Report> reportsPage = new ArrayList<>();
+            for (int i = page * size; i < page * size + size; i++) {
+                reportsPage.add(reports.get(i));
+            }
+            // enable resync db
+            toggleResyncDB();
+            return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
+        } catch (Exception e) {
+            // node 2 or 3 is down, cannot perform data retrieval so throw exception
+            System.out.println("getMoviesPerDirectorByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
+            // enable resync db
+            toggleResyncDB();
+            throw e;
+        }
     }
 
-    public Page<Report> getMoviesPerActorByPage(int page, int size) {
-        return node1Repo.getMoviesPerActorByPage(PageRequest.of(page, size));
+    public Page<Report> getMoviesPerActorByPage(int page, int size) throws Exception {
+        // disable resync db
+        toggleResyncDB();
+
+        // try connection to node 1 (central node)
+        try {
+            Page<Report> reports = null;
+            node1Repo.tryConnection();
+            System.out.println("getMoviesPerActorByPage - Reading and retrieving data from node 1...");
+            reports = node1Repo.getMoviesPerActorByPage(PageRequest.of(page, size));
+            // enable resync db
+            toggleResyncDB();
+            return reports;
+        } catch (Exception e) {
+            // node 1 is currently down
+            System.out.println("getMoviesPerActorByPage - Node 1 is currently down...");
+        }
+
+        // try connection to both node 2 and 3, if at least one is down then cannot perform data retrieval process and throw exception
+        // both node 2 and 3 needs to be available to combine and replicate node 1 database for this specific query
+        try {
+            // try connection to both node 2 and 3
+            node2Repo.tryConnection();
+            node3Repo.tryConnection();
+            // both nodes are available, perform data retrieval process
+            int total = 0;
+            List<Report> reports = null;
+            System.out.println("getMoviesPerActorByPage - Reading and retrieving data from node 2...");
+            total += node2Repo.getNumOfActors();
+            reports = node2Repo.getMoviesPerActor();
+            System.out.println("getMoviesPerActorByPage - Reading and retrieving data from node 3...");
+            total += node3Repo.getNumOfActors();
+            List<Report> node3Reports = node3Repo.getMoviesPerActor();
+            for (int i = 0; i < node3Reports.size(); i++) {
+                // append report to list if it is not found on the current report list, else combine / add count
+                boolean unique = true;
+                for (int j = 0; j < reports.size() && unique; j++) {
+                    if (reports.get(j).getLabel().equalsIgnoreCase(node3Reports.get(i).getLabel())) {
+                        reports.get(j).setCount(reports.get(j).getCount() + node3Reports.get(i).getCount());
+                        unique = false;
+                    }
+                }
+                if (unique) {
+                    reports.add(node3Reports.get(i));
+                }
+            }
+            // get specific reports according to page number and size
+            List<Report> reportsPage = new ArrayList<>();
+            for (int i = page * size; i < page * size + size; i++) {
+                reportsPage.add(reports.get(i));
+            }
+            // enable resync db
+            toggleResyncDB();
+            return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
+        } catch (Exception e) {
+            // node 2 or 3 is down, cannot perform data retrieval so throw exception
+            System.out.println("getMoviesPerActorByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
+            // enable resync db
+            toggleResyncDB();
+            throw e;
+        }
     }
 
-    public Page<Report> getMoviesPerYearByPage(int page, int size) {
-        return node1Repo.getMoviesPerYearByPage(PageRequest.of(page, size));
+    public Page<Report> getMoviesPerYearByPage(int page, int size) throws Exception {
+        // disable resync db
+        toggleResyncDB();
+
+        // try connection to node 1 (central node)
+        try {
+            Page<Report> reports = null;
+            node1Repo.tryConnection();
+            System.out.println("getMoviesPerYearByPage - Reading and retrieving data from node 1...");
+            reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page, size));
+            // enable resync db
+            toggleResyncDB();
+            return reports;
+        } catch (Exception e) {
+            // node 1 is currently down
+            System.out.println("getMoviesPerYearByPage - Node 1 is currently down...");
+        }
+
+        // try connection to both node 2 and 3, if at least one is down then cannot perform data retrieval process and throw exception
+        // both node 2 and 3 needs to be available to combine and replicate node 1 database for this specific query
+        try {
+            // try connection to both node 2 and 3
+            node2Repo.tryConnection();
+            node3Repo.tryConnection();
+            // both nodes are available, perform data retrieval process
+            int total = 0;
+            List<Report> reports = null;
+            System.out.println("getMoviesPerYearByPage - Reading and retrieving data from node 2...");
+            total += node2Repo.getNumOfYears();
+            reports = node2Repo.getMoviesPerYear();
+            System.out.println("getMoviesPerYearByPage - Reading and retrieving data from node 3...");
+            total += node3Repo.getNumOfYears();
+            List<Report> node3Reports = node3Repo.getMoviesPerYear();
+            for (int i = 0; i < node3Reports.size(); i++) {
+                // append report to list if it is not found on the current report list, else combine / add count
+                boolean unique = true;
+                for (int j = 0; j < reports.size() && unique; j++) {
+                    if (reports.get(j).getLabel().equalsIgnoreCase(node3Reports.get(i).getLabel())) {
+                        reports.get(j).setCount(reports.get(j).getCount() + node3Reports.get(i).getCount());
+                        unique = false;
+                    }
+                }
+                if (unique) {
+                    reports.add(node3Reports.get(i));
+                }
+            }
+            // get specific reports according to page number and size
+            List<Report> reportsPage = new ArrayList<>();
+            for (int i = page * size; i < page * size + size; i++) {
+                reportsPage.add(reports.get(i));
+            }
+            // enable resync db
+            toggleResyncDB();
+            return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
+        } catch (Exception e) {
+            // node 2 or 3 is down, cannot perform data retrieval so throw exception
+            System.out.println("getMoviesPerYearByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
+            // enable resync db
+            toggleResyncDB();
+            throw e;
+        }
     }
 
     public void addMovie(Movie movie) throws TransactionException {
@@ -332,12 +635,18 @@ public class DistributedDBService {
         // TODO: implement database recovery
     }
 
-    // executes every 10 seconds, performs re-syncing of distributed database in case if system failures previously
+    // executes every 20 seconds, performs re-syncing of distributed database in case if system failures previously
     // occurred, specifically unavailability of nodes
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 20000)
     private void resyncDB() {
         // TODO: implement distributed DB resync-ing (database recovery)
-        System.out.println("Test resync...");
+        if (resyncEnabled) {
+            System.out.println("Test resync...");
+        }
+    }
+
+    private void toggleResyncDB() {
+        resyncEnabled = !resyncEnabled;
     }
 
 }

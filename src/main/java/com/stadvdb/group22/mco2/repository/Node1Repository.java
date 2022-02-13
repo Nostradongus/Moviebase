@@ -21,7 +21,7 @@ import java.sql.*;
 import java.util.List;
 
 @Repository
-public class Node1Repository implements NodeRepository {
+public class Node1Repository {
 
     // transaction manager for node 1, needed to set isolation level
     @Autowired

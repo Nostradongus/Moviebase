@@ -21,7 +21,7 @@ import java.sql.*;
 import java.util.List;
 
 @Repository
-public class Node2Repository implements NodeRepository {
+public class Node2Repository {
     // transaction manager for node 2, needed to set isolation level
     @Autowired
     @Qualifier("node2TxTemplate")
@@ -35,7 +35,7 @@ public class Node2Repository implements NodeRepository {
     public void tryConnection() throws SQLException {
         // try connection to database, if database is down then throw SQLException
         DriverManager.setLoginTimeout(5);
-        Connection connection = DriverManager.getConnection(DBConfig.node2Url, DBConfig.node2Username, DBConfig.node2Password);
+        Connection connection = DriverManager.getConnection(DBConfig.node2Url, DBConfig.node2Username, DBConfig.node1Password);
 
         // close connection afterwards if successful
         connection.close();
@@ -58,6 +58,16 @@ public class Node2Repository implements NodeRepository {
             List<Movie> movies = node2.query(sqlQuery, new MovieRowMapper());
             return new PageImpl<>(movies, pageable, total);
         });
+    }
+
+    public List<Movie> getMovies() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.query("SELECT * FROM movies", new MovieRowMapper()));
+    }
+
+    public int getNumOfMovies() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.queryForObject("SELECT COUNT(*) FROM movies", Integer.class));
     }
 
     public Page<Movie> searchMoviesByPage(Movie movie, Pageable pageable) throws TransactionException {
@@ -90,6 +100,16 @@ public class Node2Repository implements NodeRepository {
         });
     }
 
+    public List<Report> getMoviesPerGenre() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.query("SELECT genre AS label, COUNT(*) AS count FROM movies GROUP BY genre", new ReportRowMapper()));
+    }
+
+    public int getNumOfGenres() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.queryForObject("SELECT COUNT(DISTINCT genre) FROM movies", Integer.class));
+    }
+
     public Page<Report> getMoviesPerDirectorByPage(Pageable pageable) throws TransactionException {
         // execute transaction
         return txTemplate.execute(status -> {
@@ -98,6 +118,16 @@ public class Node2Repository implements NodeRepository {
             List<Report> reports = node2.query(sqlQuery, new ReportRowMapper());
             return new PageImpl<>(reports, pageable, total);
         });
+    }
+
+    public List<Report> getMoviesPerDirector() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.query("SELECT director AS label, COUNT(*) AS count FROM movies GROUP BY director", new ReportRowMapper()));
+    }
+
+    public int getNumOfDirectors() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.queryForObject("SELECT COUNT(DISTINCT director) FROM movies", Integer.class));
     }
 
     public Page<Report> getMoviesPerActorByPage(Pageable pageable) throws TransactionException {
@@ -110,6 +140,16 @@ public class Node2Repository implements NodeRepository {
         });
     }
 
+    public List<Report> getMoviesPerActor() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.query("SELECT actor1 AS label, COUNT(*) AS count FROM movies GROUP BY actor1", new ReportRowMapper()));
+    }
+
+    public int getNumOfActors() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.queryForObject("SELECT COUNT(DISTINCT actor1) FROM movies", Integer.class));
+    }
+
     public Page<Report> getMoviesPerYearByPage(Pageable pageable) throws TransactionException {
         // execute transaction
         return txTemplate.execute(status -> {
@@ -118,6 +158,16 @@ public class Node2Repository implements NodeRepository {
             List<Report> reports = node2.query(sqlQuery, new ReportRowMapper());
             return new PageImpl<>(reports, pageable, total);
         });
+    }
+
+    public List<Report> getMoviesPerYear() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.query("SELECT yr AS label, COUNT(*) AS count FROM movies GROUP BY yr", new ReportRowMapper()));
+    }
+
+    public int getNumOfYears() throws TransactionException {
+        // execute transaction
+        return txTemplate.execute(status -> node2.queryForObject("SELECT COUNT(DISTINCT yr) FROM movies", Integer.class));
     }
 
     public void addMovie(Movie movie) throws TransactionException {

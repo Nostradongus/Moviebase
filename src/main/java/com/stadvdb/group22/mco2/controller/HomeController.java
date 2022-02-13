@@ -31,16 +31,21 @@ public class HomeController {
 
     @RequestMapping(value = {"/movies/p/{pageNum}", ""}, method = RequestMethod.GET)
     public String getHomePage(Model model, @PathVariable int pageNum, @RequestParam(defaultValue = "5") int size) {
-        Page<Movie> movies = distributedDBService.getMoviesByPage(pageNum - 1, size);
-        int totalPages = movies.getTotalPages();
+        try {
+            Page<Movie> movies = distributedDBService.getMoviesByPage(pageNum - 1, size);
+            int totalPages = movies.getTotalPages();
 
-        if (pageNum > 0 && pageNum < totalPages) {
-            model.addAttribute("page", movies);
-            model.addAttribute("pageNum", pageNum);
-            model.addAttribute("movie", new Movie());
-            return "index";
-        } else {
-            return "page_not_found";
+            if (pageNum > 0 && pageNum < totalPages) {
+                model.addAttribute("page", movies);
+                model.addAttribute("pageNum", pageNum);
+                model.addAttribute("movie", new Movie());
+                return "index";
+            } else {
+                return "page_not_found";
+            }
+        } catch (Exception e) {
+            // TODO: handle exception here for front-end (databases are down)
+            return null;
         }
     }
 
