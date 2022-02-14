@@ -1,9 +1,5 @@
 $(document).ready (function () {
-    $("#deleteBtn").click (function () {
-        window.location.href = "/delete/" + movieYear + "/" + movieUUID + "/";
-    })
-
-    $("#updateMovieForm").submit(function (e) {
+    $("#addMovieForm").submit(function (e) {
         if (!isValidForm ())
             e.preventDefault ();
     })
@@ -50,4 +46,14 @@ $(document).ready (function () {
             return true;
         }
     }
+
+    // For clearing of fields
+    $("#clearBtn").click (function () {
+        $("#title").val("");
+        $("#year").val("");
+        $("#genre").val("");
+        $("#actor1").val("");
+        $("#actor2").val("");
+        $("#director").val("");
+    })
 })

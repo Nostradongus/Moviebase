@@ -6,7 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.servlet.view.RedirectView;
+import static org.apache.commons.lang3.StringUtils.*;
+import static org.apache.commons.lang3.Validate.*;
 
 @Controller
 public class UpdateMovieController {
@@ -14,27 +17,44 @@ public class UpdateMovieController {
     @Autowired
     private DistributedDBService distributedDBService;
 
-    @RequestMapping(value = {"movies/m/{movieUUID}/{movieYear}", ""}, method = RequestMethod.GET)
+    private String movieUUID;
+    private int movieYear;
+
+    @RequestMapping(value = {"movies/y/{movieYear}/m/{movieUUID}", ""}, method = RequestMethod.GET)
     public String getMovie(Model model, @PathVariable String movieUUID, @PathVariable int movieYear) {
         try {
             Movie movie = distributedDBService.getMovieByUUID(movieUUID, movieYear);
 
             if (movie != null) {
                 model.addAttribute("movie", movie);
+                this.movieUUID = movieUUID;
+                this.movieYear = movieYear;
+
                 return "update_movie";
             } else {
-                return "movie_not_found";
+                this.movieUUID = "";
+                this.movieYear = -1;
+
+                return "err_movie_not_found";
             }
         } catch (Exception e) {
+            this.movieUUID = "";
+            this.movieYear = -1;
+
             e.printStackTrace();
-            // TODO: Redirect to "database down"
-            return "movie_not_found";
+            return "err_database_down";
         }
     }
 
     @RequestMapping(value = "/update", method = RequestMethod.POST)
     public RedirectView updateMovie(@ModelAttribute Movie movie) {
-        // TODO: add input validation (e.g. null / blank input, etc.)
+        notNull (movie);
+        notBlank (movie.getTitle());
+        notNull (movie.getYear());
+        isTrue (movie.getYear() > 0);
+        notBlank (movie.getGenre());
+        notBlank (movie.getActor1());
+        notBlank (movie.getDirector());
 
         // trim whitespaces and reformat inputs for SQL query
         movie.setTitle(movie.getTitle().trim());
@@ -50,5 +70,17 @@ public class UpdateMovieController {
             // TODO: handle exception here for front-end
             return null;
         }
+    }
+
+    @ExceptionHandler(NullPointerException.class)
+    public RedirectView handleNullPointerException (RedirectAttributes redirectAttrs) {
+        redirectAttrs.addFlashAttribute("errorMsg", "Please fill up all required fields!");
+        return new RedirectView("/movies/m/" + this.movieUUID + "/" + this.movieYear);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public RedirectView handleIllegalArgumentException (RedirectAttributes redirectAttrs) {
+        redirectAttrs.addFlashAttribute("errorMsg", "Please fill up all required fields!");
+        return new RedirectView("/movies/m/" + this.movieUUID + "/" + this.movieYear);
     }
 }

@@ -5,13 +5,14 @@ import com.stadvdb.group22.mco2.service.DistributedDBService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.UUID;
+
+import static org.apache.commons.lang3.Validate.*;
+import static org.apache.commons.lang3.Validate.notBlank;
 
 @Controller
 public class AddMovieController {
@@ -28,7 +29,14 @@ public class AddMovieController {
 
     @RequestMapping(value = "/add", method = RequestMethod.POST)
     public RedirectView addMovie(@ModelAttribute Movie movie) {
-        // TODO: add input validation (e.g. null / blank input, etc.)
+        notNull (movie);
+        notBlank (movie.getTitle());
+        notNull (movie.getYear());
+        isTrue (movie.getYear() > 0);
+        notBlank (movie.getGenre());
+        notBlank (movie.getActor1());
+        notBlank (movie.getDirector());
+
 
         // trim whitespaces and reformat inputs for SQL query
         movie.setTitle(movie.getTitle().trim());
@@ -45,5 +53,17 @@ public class AddMovieController {
             // TODO: handle exception here for front-end
             return null;
         }
+    }
+
+    @ExceptionHandler(NullPointerException.class)
+    public RedirectView handleNullPointerException (RedirectAttributes redirectAttrs) {
+        redirectAttrs.addFlashAttribute("errorMsg", "Please fill up all required fields!");
+        return new RedirectView("/add_movie");
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public RedirectView handleIllegalArgumentException (RedirectAttributes redirectAttrs) {
+        redirectAttrs.addFlashAttribute("errorMsg", "Please fill up all required fields!");
+        return new RedirectView("/add_movie");
     }
 }

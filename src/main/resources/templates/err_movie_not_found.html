@@ -18,22 +18,19 @@
     <!-- JQUERY -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" type="text/javascript"></script>
 
-    <!-- AJAX -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-
     <link rel="stylesheet" type="text/css" href="/css/styles.css" media="screen">
 </head>
 <body>
-<navbar th:insert="fragments/navbar.html :: navbar"> </navbar>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<div class="container-fluid">
-    <h1 style="text-align: center"> Oh no! That page does not exist.</h1>
-    <h4 style="text-align: center">Please do try again :)</h4>
-</div>
+    <navbar th:insert="fragments/navbar.html :: navbar"> </navbar>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <div class="container-fluid">
+        <h1 style="text-align: center"> Oh no! That movie does not exist.</h1>
+        <h4 style="text-align: center">You can perhaps try adding it <a href="/add_movie">here</a>.</h4>
+    </div>
 </body>
 </html>

@@ -1,3 +1,7 @@
+input {
+    border: solid 2px gray;
+}
+
 #moviebase-navbar {
     background-color: #C4C4C4;
     color: #000000;

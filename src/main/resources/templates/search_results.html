@@ -19,13 +19,22 @@
 
     <!-- CSS -->
     <link rel="stylesheet" type="text/css" href="/css/styles.css" media="screen">
+
+    <!-- JAVASCRIPT -->
+    <script th:inline="javascript" type="text/javascript">
+        var pageNum = [[${pageNum}]];
+        var maxPages = [[${page.totalPages}]];
+    </script>
+
+    <!-- EXTERNAL JS SHEET -->
+    <script th:src="@{/js/search.js}" type="text/javascript"></script>
 </head>
 <body>
 <navbar th:insert="fragments/navbar.html :: navbar"> </navbar>
 <br>
 <div class="container-fluid">
     <form action="#" th:action="@{/search}" th:object="${movie}" method="post">
-        <div class="row mb-3">
+        <div class="row">
             <h2 style="text-align: center; font-weight: bold" class="m-0">
                 Search Results
             </h2>
@@ -78,21 +87,25 @@
                 </div>
                 <div class="row d-flex justify-content-center">
                     <div class="col-3">
-                        <button class="moviebase-btn" style="margin-right: 20px">FILTER</button>
+                        <button type="submit" class="moviebase-btn" style="margin-right: 20px">FILTER</button>
                     </div>
                     <div class="col-3" style="margin-left: 20px">
-                        <button class="moviebase-btn">CLEAR</button>
+                        <button type="button" class="moviebase-btn" id="clearBtn">CLEAR</button>
                     </div>
                 </div>
             </div>
         </div>
     </form>
     <div class="row w-75 mx-auto mb-5">
+        <div class="row mt-4" th:if="${hasResults == 'FALSE'}">
+            <h1 style="text-align: center"> There are no results for that query.</h1>
+            <h4 style="text-align: center">Please do try again :)</h4>
+        </div>
         <!-- MOVIE LISTING -->
-        <div class="row movie-container mb-3" th:each="movie : ${page.content}">
+        <div class="row movie-container mb-3" th:each="movie : ${page.content}" th:else="${hasResults == 'TRUE'}">
             <div class="row movie-entry" onclick="">
                 <div class="col">
-                    <a class="movie-container-title" th:text="${movie.title}" th:href="@{/movies/m/{movieUUID}/{year}(movieUUID=${movie.uuid},year=${movie.year})}">
+                    <a class="movie-container-title" th:text="${movie.title}" th:href="@{/movies/y/{year}/m/{movieUUID}(movieUUID=${movie.uuid},year=${movie.year})}">
                         Die Hard 2
                     </a>
                     <span class="movie-container-year">(<span th:text="${movie.year}">1987</span>)</span>
@@ -116,38 +129,13 @@
             </div>
         </div>
     </div>
-    <div class="row">
+    <div class="row" th:if="${hasResults == 'TRUE'}">
         <nav aria-label="Page navigation example">
-            <ul class="pagination justify-content-center">
-                <li class="page-item disabled" id="prevBtnContainer">
-                    <a class="page-link" href="#" id="prevBtn">Previous</a>
-                </li>
-                <li class="page-item"><a class="page-link" href="/movies/p/1" id="page1">1</a></li>
-                <li class="page-item"><a class="page-link" href="/movies/p/2" id="page2">2</a></li>
-                <li class="page-item"><a class="page-link" href="/movies/p/3" id="page3">3</a></li>
-                <li class="page-item"><a class="page-link" href="/movies/p/4" id="page4">4</a></li>
-                <li class="page-item"><a class="page-link" href="/movies/p/5" id="page5">5</a></li>
-                <li class="page-item" id="nextBtnContainer">
-                    <a class="page-link" href="#" id="nextBtn">Next</a>
-                </li>
+            <ul class="pagination justify-content-center" id="paginationList">
+                <!-- PAGINATION CONTENT TO BE ADDED VIA JS HERE -->
             </ul>
         </nav>
     </div>
-    <div class="row">
-        <div class="col-5 mx-auto">
-            <h5>Quick Links:</h5>
-            <ul>
-                <li><a href="/add_movie">Add a movie</a></li>
-                <li><a href="/update_movie">Update a movie</a></li>
-                <li><a href="/delete_movie">Delete a movie</a></li>
-            </ul>
-        </div>
-    </div>
 </div>
-
-<input type="hidden" id="pageNum" name="pageNum" th:value="${pageNum}"/>
-<input type="hidden" id="maxPages" name="maxPages" th:value="${page.totalPages}"/>
-
-
 </body>
 </html>

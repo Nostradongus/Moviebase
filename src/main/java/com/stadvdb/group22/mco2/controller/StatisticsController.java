@@ -57,11 +57,10 @@ public class StatisticsController {
                 model.addAttribute("statisticsURL", "movies_per_genre");
                 return "statistics";
             } else {
-                return "page_not_found";
+                return "err_page_not_found";
             }
         } catch (Exception e) {
-            // TODO: handle exception here for front-end (database down)
-            return "page_not_found";
+            return "err_database_down";
         }
     }
 
@@ -78,11 +77,10 @@ public class StatisticsController {
                 model.addAttribute("statisticsURL", "movies_per_director");
                 return "statistics";
             } else {
-                return "page_not_found";
+                return "err_page_not_found";
             }
         } catch (Exception e) {
-            // TODO: handle exception here for front-end (database down)
-            return "page_not_found";
+            return "err_database_down";
         }
     }
 
@@ -99,11 +97,10 @@ public class StatisticsController {
                 model.addAttribute("statisticsURL", "movies_per_actor");
                 return "statistics";
             } else {
-                return "page_not_found";
+                return "err_page_not_found";
             }
         } catch (Exception e) {
-            // TODO: handle exception here for front-end (database down)
-            return "page_not_found";
+            return "err_database_down";
         }
     }
 
@@ -120,11 +117,10 @@ public class StatisticsController {
                 model.addAttribute("statisticsURL", "movies_per_year");
                 return "statistics";
             } else {
-                return "page_not_found";
+                return "err_page_not_found";
             }
         } catch (Exception e) {
-            // TODO: handle exception here for front-end (database down)
-            return "page_not_found";
+            return "err_database_down";
         }
     }
 }

@@ -15,18 +15,14 @@ public class DeleteMovieController {
     @Autowired
     private DistributedDBService movieService;
 
-    @RequestMapping(value = "/delete/{movieUUID}", method = RequestMethod.GET)
-    public RedirectView deleteMovie(@PathVariable String movieUUID) {
+    @RequestMapping(value = "/delete/{movieYear}/{movieUUID}/", method = RequestMethod.GET)
+    public RedirectView deleteMovie(@PathVariable String movieUUID, @PathVariable int movieYear) {
         System.out.println ("MOVIE ID: " + movieUUID);
         Movie movie = new Movie ();
         movie.setUuid(movieUUID);
+        movie.setYear(movieYear);
+        movieService.deleteMovie(movie);
 
-        try {
-            movieService.deleteMovie(movie);
-            return new RedirectView("/");
-        } catch (Exception e) {
-            // TODO: handle exception here for front-end
-            return null;
-        }
+        return new RedirectView ("/");
     }
 }
