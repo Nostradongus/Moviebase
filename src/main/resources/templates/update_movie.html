@@ -27,6 +27,7 @@
     <script th:inline="javascript" type="text/javascript">
         var movieID = [[${movie.uuid}]]
     </script>
+
     <!-- EXTERNAL JS SHEET -->
     <script th:src="@{/js/update.js}" type="text/javascript"></script>
 </head>
@@ -41,7 +42,7 @@
         </div>
         <div class="row">
             <div class="container moviebase-form">
-                <form action="#" th:action="@{/update}" th:object="${movie}" method="post">
+                <form action="#" th:action="@{/update}" th:object="${movie}" method="post" id="updateMovieForm">
                     <div class="row">
                         <p style="font-weight: bold; font-size: 30px; text-decoration: underline">
                             Movie Details
@@ -96,6 +97,7 @@
                         </div>
                     </div>
                     <div class="row">
+                        <p style="font-size: 14px; color: tomato; text-align: center; font-weight: bold" id="errorMessage" th:text="${errorMsg}"></p>
                         <p style="font-size: 14px; color: tomato; text-align: center">*Optional field/s (can be left empty)</p>
                     </div>
                     <div class="row d-flex justify-content-center">

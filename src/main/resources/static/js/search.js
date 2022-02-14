@@ -1,4 +1,3 @@
-
 $(document).ready (function () {
     // Reference main container for Pagination
     var paginationList = $("#paginationList");
@@ -10,7 +9,7 @@ $(document).ready (function () {
 
     var listItemFirstBtnAnchor = document.createElement ("a");
     listItemFirstBtnAnchor.setAttribute ("class", "page-link");
-    listItemFirstBtnAnchor.setAttribute ("href", "/movies/p/1");
+    listItemFirstBtnAnchor.setAttribute ("href", "/search/p/1");
     listItemFirstBtnAnchor.setAttribute ("id", "firstBtn");
     listItemFirstBtnAnchor.setAttribute ("style", "font-weight: bold");
     listItemFirstBtnAnchor.textContent = "<<";
@@ -26,7 +25,7 @@ $(document).ready (function () {
 
     var listItemPrevBtnAnchor = document.createElement ("a");
     listItemPrevBtnAnchor.setAttribute ("class", "page-link");
-    listItemPrevBtnAnchor.setAttribute ("href", "/movies/p/" + (pageNum - 1));
+    listItemPrevBtnAnchor.setAttribute ("href", "/search/p/" + (pageNum - 1));
     listItemPrevBtnAnchor.setAttribute ("id", "prevBtn");
     listItemPrevBtnAnchor.textContent = "Previous";
 
@@ -60,7 +59,7 @@ $(document).ready (function () {
 
         var listItemAnchor = document.createElement ("a");
         listItemAnchor.setAttribute ("class", "page-link");
-        listItemAnchor.setAttribute ("href", "/movies/p/" + (i + 1));
+        listItemAnchor.setAttribute ("href", "/search/p/" + (i + 1));
         listItemAnchor.setAttribute ("id", i + 1);
         listItemAnchor.textContent = i + 1;
 
@@ -81,7 +80,7 @@ $(document).ready (function () {
 
     var listItemNextBtnAnchor = document.createElement ("a");
     listItemNextBtnAnchor.setAttribute ("class", "page-link");
-    listItemNextBtnAnchor.setAttribute ("href", "/movies/p/" + (pageNum + 1));
+    listItemNextBtnAnchor.setAttribute ("href", "/search/p/" + (pageNum + 1));
     listItemNextBtnAnchor.setAttribute ("id", "nextBtn");
     listItemNextBtnAnchor.textContent = "Next";
 
@@ -96,7 +95,7 @@ $(document).ready (function () {
 
     var listItemLastBtnAnchor = document.createElement ("a");
     listItemLastBtnAnchor.setAttribute ("class", "page-link");
-    listItemLastBtnAnchor.setAttribute ("href", "/movies/p/" + maxPages);
+    listItemLastBtnAnchor.setAttribute ("href", "/search/p/" + maxPages);
     listItemLastBtnAnchor.setAttribute ("id", "lastBtn");
     listItemLastBtnAnchor.setAttribute ("style", "font-weight: bold");
     listItemLastBtnAnchor.textContent = ">>";
