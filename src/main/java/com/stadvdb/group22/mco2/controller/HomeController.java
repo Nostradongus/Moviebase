@@ -67,7 +67,7 @@ public class HomeController {
 
         // create movie object
         Movie movieToInsert = new Movie();
-        movieToInsert.setYear(Integer.parseInt(year));
+        movieToInsert.setYear(year != null ? Integer.parseInt(year) : null);
         movieToInsert.setTitle(title);
         movieToInsert.setGenre(genre);
         movieToInsert.setActor1(actor);

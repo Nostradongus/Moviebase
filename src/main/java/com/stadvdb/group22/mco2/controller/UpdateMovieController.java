@@ -43,8 +43,12 @@ public class UpdateMovieController {
         movie.setActor2(movie.getActor2().trim());
         movie.setDirector(movie.getDirector().trim());
 
-        distributedDBService.updateMovie(movie);
-
-        return new RedirectView ("/");
+        try {
+            distributedDBService.updateMovie(movie);
+            return new RedirectView ("/");
+        } catch (Exception e) {
+            // TODO: handle exception here for front-end
+            return null;
+        }
     }
 }

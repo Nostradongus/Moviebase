@@ -54,7 +54,7 @@ public class DBConfig {
     public static final String node3Username = "lopez";
     public static final String node3Password = "password12!";
 
-    // CONNECTION DRIVER CLASS
+    // JDBC CONNECTOR DRIVER CLASS
     public static final String driverClassName = "com.mysql.cj.jdbc.Driver";
 
     /***** NODE 1 / CENTRAL NODE CONFIGURATIONS *****/
@@ -154,6 +154,31 @@ public class DBConfig {
     public ReentrantLock lock() {
         ReentrantLock lock = new ReentrantLock(true);
         return lock;
+    }
+
+    @Bean(name="resyncEnabled")
+    public Boolean resyncEnabled() {
+        return false;
+    }
+
+    @Bean(name="node1Down")
+    public Boolean node1Down() {
+        return false;
+    }
+
+    @Bean(name="node2Down")
+    public Boolean node2Down() {
+        return false;
+    }
+
+    @Bean(name="node3Down")
+    public Boolean node3Down() {
+        return false;
+    }
+
+    @Bean(name="maintenance")
+    public Boolean maintenance() {
+        return false;
     }
 
 }

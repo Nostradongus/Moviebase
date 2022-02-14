@@ -38,8 +38,12 @@ public class AddMovieController {
         movie.setDirector(movie.getDirector().trim());
         movie.setUuid(UUID.randomUUID().toString());
 
-        distributedDBService.addMovie(movie);
-
-        return new RedirectView ("/");
+        try {
+            distributedDBService.addMovie(movie);
+            return new RedirectView ("/");
+        } catch (Exception e) {
+            // TODO: handle exception here for front-end
+            return null;
+        }
     }
 }

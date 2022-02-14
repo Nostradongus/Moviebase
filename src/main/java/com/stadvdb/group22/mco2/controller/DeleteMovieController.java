@@ -20,8 +20,13 @@ public class DeleteMovieController {
         System.out.println ("MOVIE ID: " + movieUUID);
         Movie movie = new Movie ();
         movie.setUuid(movieUUID);
-        movieService.deleteMovie(movie);
 
-        return new RedirectView ("/");
+        try {
+            movieService.deleteMovie(movie);
+            return new RedirectView("/");
+        } catch (Exception e) {
+            // TODO: handle exception here for front-end
+            return null;
+        }
     }
 }
