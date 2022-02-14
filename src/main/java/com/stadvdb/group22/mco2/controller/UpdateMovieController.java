@@ -20,7 +20,7 @@ public class UpdateMovieController {
     private String movieUUID;
     private int movieYear;
 
-    @RequestMapping(value = {"movies/m/{movieUUID}/{movieYear}", ""}, method = RequestMethod.GET)
+    @RequestMapping(value = {"movies/y/{movieYear}/m/{movieUUID}", ""}, method = RequestMethod.GET)
     public String getMovie(Model model, @PathVariable String movieUUID, @PathVariable int movieYear) {
         try {
             Movie movie = distributedDBService.getMovieByUUID(movieUUID, movieYear);

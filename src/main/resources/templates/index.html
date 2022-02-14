@@ -107,7 +107,7 @@
             <div class="row movie-container mb-3" th:each="movie : ${page.content}">
                 <div class="row movie-entry" onclick="">
                     <div class="col">
-                        <a class="movie-container-title" th:text="${movie.title}" th:href="@{/movies/m/{movieUUID}/{year}(movieUUID=${movie.uuid},year=${movie.year})}">
+                        <a class="movie-container-title" th:text="${movie.title}" th:href="@{/movies/y/{year}/m/{movieUUID}(movieUUID=${movie.uuid},year=${movie.year})}">
                             Die Hard 2
                         </a>
                         <span class="movie-container-year">(<span th:text="${movie.year}">1987</span>)</span>
