@@ -15,11 +15,12 @@ public class DeleteMovieController {
     @Autowired
     private DistributedDBService movieService;
 
-    @RequestMapping(value = "/delete/{movieUUID}", method = RequestMethod.GET)
-    public RedirectView deleteMovie(@PathVariable String movieUUID) {
+    @RequestMapping(value = "/delete/{movieUUID}/{movieYear}", method = RequestMethod.GET)
+    public RedirectView deleteMovie(@PathVariable String movieUUID, @PathVariable int movieYear) {
         System.out.println ("MOVIE ID: " + movieUUID);
         Movie movie = new Movie ();
         movie.setUuid(movieUUID);
+        movie.setYear(movieYear);
         movieService.deleteMovie(movie);
 
         return new RedirectView ("/");

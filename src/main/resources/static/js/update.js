@@ -1,6 +1,6 @@
 $(document).ready (function () {
     $("#deleteBtn").click (function () {
-        window.location.href = "/delete/" + movieID;
+        window.location.href = "/delete/" + movieUUID + "/" + movieYear;
     })
 
     $("#updateMovieForm").submit(function (e) {
