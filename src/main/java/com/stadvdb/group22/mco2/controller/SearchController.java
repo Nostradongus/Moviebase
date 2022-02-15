@@ -1,5 +1,6 @@
 package com.stadvdb.group22.mco2.controller;
 
+import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
@@ -70,8 +71,6 @@ public class SearchController {
             Page<Movie> movies = distributedDBService.searchMoviesByPage(movieToInsert, pageNum - 1, size);
             int totalPages = movies.getTotalPages();
 
-            System.out.println ("TOTAL PAGES: " + totalPages);
-
             if (pageNum > 0 && pageNum <= totalPages) {
                 model.addAttribute("page", movies);
                 model.addAttribute("pageNum", pageNum);
@@ -87,6 +86,8 @@ public class SearchController {
             } else {
                 return "err_page_not_found";
             }
+        } catch (TransactionErrorException e) {
+            return "err_database_down";
         } catch (Exception e) {
             e.printStackTrace();
             return "err_database_down";

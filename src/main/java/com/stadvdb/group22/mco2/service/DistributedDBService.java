@@ -11,6 +11,7 @@ import com.stadvdb.group22.mco2.repository.Node2Repository;
 import com.stadvdb.group22.mco2.repository.Node3Repository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -64,8 +65,8 @@ public class DistributedDBService {
 
     // for initial check if need for re-sync (always done at start of server)
     @Autowired
-    @Qualifier("initial")
-    private Boolean initial;
+    @Qualifier("initialCheck")
+    private Boolean initialCheck;
 
     // distributed database re-sync switch
     @Autowired
@@ -129,6 +130,16 @@ public class DistributedDBService {
                 node2Repo.tryConnection();
                 System.out.println("getMovieByUUID - Reading and retrieving data from node 2...");
                 movie = node2Repo.getMovieByUUID(uuid);
+
+                // TODO: [CONCURRENCY CONTROL CASE #2 - NON-REPEATABLE READ]
+                // While sleeping, another user (thread) will update the same movie data - updating the genre
+                // System.out.println("getMovieByUUID - Before sleeping, genre: " + movie.getGenre());
+                // System.out.println("getMovieByUUID - Sleeping...");
+                // TimeUnit.SECONDS.sleep(10);
+                // System.out.println("getMovieByUUID - Done sleeping!");
+                // movie = node2Repo.getMovieByUUID(uuid);
+                // System.out.println("getMovieByUUID - After sleeping, genre: " + movie.getGenre());
+
                 node2TxManager.commit(status);
                 return movie;
             } catch (Exception e) {
@@ -293,11 +304,15 @@ public class DistributedDBService {
                     movies = node2Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
                     node2TxManager.commit(status);
                     return movies;
-                } catch (Exception e) {
+                } catch (SQLException e) {
                     // node 2 is currently down
                     node2TxManager.rollback(status);
                     node2Down = true;
                     System.out.println("searchMoviesByPage - Node 2 is currently down...");
+                } catch (DataAccessException e) {
+                    // error in reading data, invalid search parameter
+                    node2TxManager.rollback(status);
+                    System.out.println("searchMoviesByPage - Error occurred, invalid search parameter...");
                 }
             } else if (movie.getYear() >= 1980) {
                 TransactionStatus status = node3TxManager.getTransaction(definition);
@@ -311,11 +326,15 @@ public class DistributedDBService {
                     movies = node3Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
                     node3TxManager.commit(status);
                     return movies;
-                } catch (Exception e) {
+                } catch (SQLException e) {
                     // node 3 is currently down
                     node3TxManager.rollback(status);
                     node3Down = true;
                     System.out.println("searchMoviesByPage - Node 3 is currently down...");
+                } catch (DataAccessException e) {
+                    // error in reading data, invalid search parameter
+                    node3TxManager.rollback(status);
+                    System.out.println("searchMoviesByPage - Error occurred, invalid search parameter...");
                 }
             }
         }
@@ -334,13 +353,18 @@ public class DistributedDBService {
                 resyncEnabled = true;
             }
             return movies;
-        } catch (Exception e) {
+        } catch (SQLException e) {
             // node 1 is currently down
             node1TxManager.rollback(status);
             System.out.println("searchMoviesByPage - Node 1 is currently down...");
             node1Down = true;
             resyncEnabled = true;
-            throw e;
+            throw new Exception ();
+        } catch (DataAccessException e) {
+            // error in reading data, invalid search parameter
+            node2TxManager.rollback(status);
+            System.out.println("searchMoviesByPage - Error occurred, invalid search parameter...");
+            throw new TransactionErrorException();
         }
     }
 
@@ -657,6 +681,16 @@ public class DistributedDBService {
             node1Repo.tryConnection();
             System.out.println("getMoviesPerYearByPage - Reading and retrieving data from node 1...");
             reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page, size));
+
+            // TODO: [CONCURRENCY CONTROL CASE #2 - PHANTOM READ]
+            // While sleeping, another user (thread) will insert new movie data - adding a new movie with year 1893
+            // System.out.println("getMoviesPerYearByPage - Before sleeping, 1893 count: " + reports.getContent().get(0).getCount());
+            // System.out.println("getMoviesPerYearByPage - Sleeping...");
+            // TimeUnit.SECONDS.sleep(10); // do some work
+            // System.out.println("getMoviesPerYearByPage - Done sleeping!");
+            // reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page,size));
+            // System.out.println("getMoviesPerYearByPage - After sleeping, 1893 count: " + reports.getContent().get(0).getCount());
+
             node1TxManager.commit(status);
             return reports;
         } catch (Exception e) {
@@ -995,6 +1029,12 @@ public class DistributedDBService {
                 System.out.println("updateMovie - Updating movie data to node 2...");
                 node2Repo.updateMovie(movie);
                 node2Status = OK;
+
+                // TODO: [CONCURRENCY CONTROL CASE #2 - DIRTY READ]
+                // Sleep for 10 seconds, while sleeping another user (thread) will read the same movie data
+                 System.out.println("updateMovie - Sleeping...");
+                 TimeUnit.SECONDS.sleep(10); // do some work
+                 System.out.println("updateMovie - Done sleeping!");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("updateMovie - Node 2 is currently down...");
@@ -1374,7 +1414,7 @@ public class DistributedDBService {
     @Scheduled(initialDelay = 1000, fixedDelay = 20000)
     private void resyncDB() {
         // initial check (always done at start of server)
-        if (initial) {
+        if (initialCheck) {
             try {
                 // check if all nodes are online
                 node1Repo.tryConnection();
@@ -1386,7 +1426,7 @@ public class DistributedDBService {
                     resyncEnabled = false;
                 }
             } catch (Exception exception) {}
-            initial = false;
+            initialCheck = false;
         }
 
         // if there is a need for recovery
@@ -1492,7 +1532,8 @@ public class DistributedDBService {
 
                     // update node 2 db with node 1 logs
                     for (int i = 0; i < node1Logs.size(); i++) {
-                        if (recentNode2Log == null || !recentNode2Log.getUuid().equalsIgnoreCase(node1Logs.get(i).getUuid())) {
+                        if (recentNode2Log == null || !recentNode2Log.getUuid().equalsIgnoreCase(node1Logs.get(i).getUuid()) &&
+                            node1Logs.get(i).getMovieYear() < 1980) {
                             node2Recovered = true;
                             Movie movie = node1Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid());
                             String op = node1Logs.get(i).getOp();
@@ -1536,7 +1577,8 @@ public class DistributedDBService {
 
                     // update node 3 db with node 1 logs
                     for (int i = 0; i < node1Logs.size(); i++) {
-                        if (recentNode3Log == null || !recentNode3Log.getUuid().equalsIgnoreCase(node1Logs.get(i).getUuid())) {
+                        if (recentNode3Log == null || !recentNode3Log.getUuid().equalsIgnoreCase(node1Logs.get(i).getUuid()) &&
+                            node1Logs.get(i).getMovieYear() >= 1980) {
                             node3Recovered = true;
                             Movie movie = node1Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid());
                             String op = node1Logs.get(i).getOp();
