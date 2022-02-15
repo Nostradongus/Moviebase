@@ -1,6 +1,5 @@
 package com.stadvdb.group22.mco2.service;
 
-import com.fasterxml.jackson.databind.ser.std.StdKeySerializers;
 import com.stadvdb.group22.mco2.config.DBConfig;
 import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Log;
@@ -20,15 +19,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
-import java.sql.Date;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service

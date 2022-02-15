@@ -1,5 +1,6 @@
 package com.stadvdb.group22.mco2.controller;
 
+import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
 import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
@@ -36,14 +37,19 @@ public class UpdateMovieController {
                 this.movieUUID = "";
                 this.movieYear = -1;
 
-                return "err_movie_not_found";
+                model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_MOVIE_NOT_FOUND);
+                model.addAttribute("mainText", ErrorMessageConfig.MOVIE_NOT_FOUND);
+                model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+                return "err_page";
             }
         } catch (Exception e) {
             this.movieUUID = "";
             this.movieYear = -1;
 
-            e.printStackTrace();
-            return "err_database_down";
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
+            model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         }
     }
 
@@ -68,11 +74,9 @@ public class UpdateMovieController {
             distributedDBService.updateMovie(movie);
             return new RedirectView ("/");
         } catch (TransactionErrorException e) {
-            // TODO: handle exception here for front-end (transaction error, something wrong occurred, try again)
-            return new RedirectView ("/");
+            return new RedirectView ("/error");
         } catch (Exception e) {
-            // TODO: handle exception here for front-end (database down)
-            return new RedirectView ("/");
+            return new RedirectView ("/database_down");
         }
     }
 

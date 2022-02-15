@@ -1,5 +1,6 @@
 package com.stadvdb.group22.mco2.controller;
 
+import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
 import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
@@ -28,8 +29,8 @@ public class AddMovieController {
         return "add_movie";
     }
 
-    @RequestMapping(value = "/add", method = RequestMethod.POST)
-    public RedirectView addMovie(@ModelAttribute Movie movie) {
+    @RequestMapping(value = "/add_movie", method = RequestMethod.POST)
+    public String addMovie(@ModelAttribute Movie movie, Model model) {
         notNull (movie);
         notBlank (movie.getTitle());
         notNull (movie.getYear());
@@ -37,7 +38,6 @@ public class AddMovieController {
         notBlank (movie.getGenre());
         notBlank (movie.getActor1());
         notBlank (movie.getDirector());
-
 
         // trim whitespaces and reformat inputs for SQL query
         movie.setTitle(movie.getTitle().trim());
@@ -49,13 +49,17 @@ public class AddMovieController {
 
         try {
             distributedDBService.addMovie(movie);
-            return new RedirectView ("/");
+            return "redirect: add_movie";
         } catch (TransactionErrorException e) {
-            // TODO: handle exception here for front-end (transaction error, something wrong occurred, try again)
-            return new RedirectView ("/");
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
+            model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "redirect:err_page";
         } catch (Exception e) {
-            // TODO: handle exception here for front-end (database down)
-            return new RedirectView ("/");
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
+            model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "redirect:err_page";
         }
     }
 

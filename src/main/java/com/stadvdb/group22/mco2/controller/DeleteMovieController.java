@@ -14,7 +14,7 @@ import org.springframework.web.servlet.view.RedirectView;
 public class DeleteMovieController {
 
     @Autowired
-    private DistributedDBService movieService;
+    private DistributedDBService distributedDBService;
 
     @RequestMapping(value = "/delete/{movieYear}/{movieUUID}/", method = RequestMethod.GET)
     public RedirectView deleteMovie(@PathVariable String movieUUID, @PathVariable int movieYear) {
@@ -23,14 +23,12 @@ public class DeleteMovieController {
         movie.setUuid(movieUUID);
         movie.setYear(movieYear);
         try {
-            movieService.deleteMovie(movie);
+            distributedDBService.deleteMovie(movie);
             return new RedirectView ("/");
         } catch (TransactionErrorException e) {
-            // TODO: handle exception here for front-end (transaction error, something wrong occurred, try again)
-            return new RedirectView ("/");
+            return new RedirectView ("/error");
         } catch (Exception e) {
-            // TODO: handle exception here for front-end (database down)
-            return new RedirectView ("/");
+            return new RedirectView ("/database_down");
         }
     }
 }
