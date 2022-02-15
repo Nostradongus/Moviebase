@@ -1,5 +1,6 @@
 package com.stadvdb.group22.mco2.controller;
 
+import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
@@ -50,18 +51,23 @@ public class StatisticsController {
             Page<Report> reports = distributedDBService.getMoviesPerGenreByPage(pageNum - 1, size);
             int totalPages = reports.getTotalPages();
 
-            if (pageNum > 0 && pageNum < totalPages) {
+            if (pageNum >= 0 && pageNum <= totalPages) {
                 model.addAttribute("page", reports);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("pageTitle", "No. of Movies Per Genre:");
                 model.addAttribute("statisticsURL", "movies_per_genre");
                 return "statistics";
             } else {
-                return "err_page_not_found";
+                model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_PAGE_NOT_FOUND);
+                model.addAttribute("mainText", ErrorMessageConfig.PAGE_NOT_FOUND);
+                model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+                return "err_page";
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            return "err_database_down";
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
+            model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         }
     }
 
@@ -71,17 +77,23 @@ public class StatisticsController {
             Page<Report> reports = distributedDBService.getMoviesPerDirectorByPage(pageNum - 1, size);
             int totalPages = reports.getTotalPages();
 
-            if (pageNum > 0 && pageNum < totalPages) {
+            if (pageNum >= 0 && pageNum <= totalPages) {
                 model.addAttribute("page", reports);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("pageTitle", "No. of Movies Per Director:");
                 model.addAttribute("statisticsURL", "movies_per_director");
                 return "statistics";
             } else {
-                return "err_page_not_found";
+                model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_PAGE_NOT_FOUND);
+                model.addAttribute("mainText", ErrorMessageConfig.PAGE_NOT_FOUND);
+                model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+                return "err_page";
             }
         } catch (Exception e) {
-            return "err_database_down";
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
+            model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         }
     }
 
@@ -91,17 +103,23 @@ public class StatisticsController {
             Page<Report> reports = distributedDBService.getMoviesPerActorByPage(pageNum - 1, size);
             int totalPages = reports.getTotalPages();
 
-            if (pageNum > 0 && pageNum < totalPages) {
+            if (pageNum >= 0 && pageNum <= totalPages) {
                 model.addAttribute("page", reports);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("pageTitle", "No. of Movies Per Actor:");
                 model.addAttribute("statisticsURL", "movies_per_actor");
                 return "statistics";
             } else {
-                return "err_page_not_found";
+                model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_PAGE_NOT_FOUND);
+                model.addAttribute("mainText", ErrorMessageConfig.PAGE_NOT_FOUND);
+                model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+                return "err_page";
             }
         } catch (Exception e) {
-            return "err_database_down";
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
+            model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         }
     }
 
@@ -111,17 +129,23 @@ public class StatisticsController {
             Page<Report> reports = distributedDBService.getMoviesPerYearByPage(pageNum - 1, size);
             int totalPages = reports.getTotalPages();
 
-            if (pageNum > 0 && pageNum < totalPages) {
+            if (pageNum >= 0 && pageNum <= totalPages) {
                 model.addAttribute("page", reports);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("pageTitle", "No. of Movies Per year:");
                 model.addAttribute("statisticsURL", "movies_per_year");
                 return "statistics";
             } else {
-                return "err_page_not_found";
+                model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_PAGE_NOT_FOUND);
+                model.addAttribute("mainText", ErrorMessageConfig.PAGE_NOT_FOUND);
+                model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+                return "err_page";
             }
         } catch (Exception e) {
-            return "err_database_down";
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
+            model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         }
     }
 }

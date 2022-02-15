@@ -1,6 +1,5 @@
 package com.stadvdb.group22.mco2.service;
 
-import com.fasterxml.jackson.databind.ser.std.StdKeySerializers;
 import com.stadvdb.group22.mco2.config.DBConfig;
 import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Log;
@@ -19,15 +18,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
-import java.sql.Date;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
@@ -64,8 +60,8 @@ public class DistributedDBService {
 
     // for initial check if need for re-sync (always done at start of server)
     @Autowired
-    @Qualifier("initial")
-    private Boolean initial;
+    @Qualifier("initialCheck")
+    private Boolean initialCheck;
 
     // distributed database re-sync switch
     @Autowired
@@ -1374,7 +1370,7 @@ public class DistributedDBService {
     @Scheduled(initialDelay = 1000, fixedDelay = 20000)
     private void resyncDB() {
         // initial check (always done at start of server)
-        if (initial) {
+        if (initialCheck) {
             try {
                 // check if all nodes are online
                 node1Repo.tryConnection();
@@ -1386,7 +1382,7 @@ public class DistributedDBService {
                     resyncEnabled = false;
                 }
             } catch (Exception exception) {}
-            initial = false;
+            initialCheck = false;
         }
 
         // if there is a need for recovery

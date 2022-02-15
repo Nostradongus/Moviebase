@@ -1,5 +1,6 @@
 package com.stadvdb.group22.mco2.controller;
 
+import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
@@ -56,8 +57,6 @@ public class SearchController {
         if (this.directorQuery != null)
             this.directorQuery = !directorQuery.equalsIgnoreCase("") ? "'" + directorQuery.trim() + "'" : null;
 
-        System.out.println ("SEARCHING FOR: " + titleQuery + " (" + yearQuery + ")");
-
         // create movie object
         Movie movieToInsert = new Movie();
         movieToInsert.setYear(yearQuery != null ? Integer.parseInt(yearQuery) : null);
@@ -70,9 +69,7 @@ public class SearchController {
             Page<Movie> movies = distributedDBService.searchMoviesByPage(movieToInsert, pageNum - 1, size);
             int totalPages = movies.getTotalPages();
 
-            System.out.println ("TOTAL PAGES: " + totalPages);
-
-            if (pageNum > 0 && pageNum <= totalPages) {
+            if (pageNum >= 0 && pageNum <= totalPages) {
                 model.addAttribute("page", movies);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("movie", new Movie());
@@ -85,11 +82,17 @@ public class SearchController {
                 model.addAttribute("hasResults", "FALSE");
                 return "search_results";
             } else {
-                return "err_page_not_found";
+                model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_PAGE_NOT_FOUND);
+                model.addAttribute("mainText", ErrorMessageConfig.PAGE_NOT_FOUND);
+                model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+                return "err_page";
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return "err_database_down";
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
+            model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         }
     }
 }

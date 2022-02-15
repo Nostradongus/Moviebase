@@ -1,5 +1,6 @@
 package com.stadvdb.group22.mco2.controller;
 
+import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
@@ -35,16 +36,25 @@ public class HomeController {
             Page<Movie> movies = distributedDBService.getMoviesByPage(pageNum - 1, size);
             int totalPages = movies.getTotalPages();
 
-            if (pageNum > 0 && pageNum <= totalPages) {
+            // if valid page
+            if (pageNum >= 0 && pageNum <= totalPages) {
                 model.addAttribute("page", movies);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("movie", new Movie());
                 return "index";
+            // if invalid page
             } else {
-                return "err_page_not_found";
+                model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_PAGE_NOT_FOUND);
+                model.addAttribute("mainText", ErrorMessageConfig.PAGE_NOT_FOUND);
+                model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+                return "err_page";
             }
+        // if database is down
         } catch (Exception e) {
-            return "err_database_down";
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
+            model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         }
     }
 }
