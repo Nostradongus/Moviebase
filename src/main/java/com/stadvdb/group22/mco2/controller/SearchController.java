@@ -87,6 +87,11 @@ public class SearchController {
                 model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
                 return "err_page";
             }
+        } catch (TransactionErrorException e) {
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
+            model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         } catch (Exception e) {
             e.printStackTrace();
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);

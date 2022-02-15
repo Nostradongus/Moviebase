@@ -25,6 +25,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
@@ -89,7 +90,7 @@ public class DistributedDBService {
     @Qualifier("node3Down")
     private Boolean node3Down;
 
-    // TODO: temporary (not used), might be removed
+    // temporary (not used), might be removed
     @Autowired
     private ReentrantLock lock;
 
@@ -1028,9 +1029,9 @@ public class DistributedDBService {
 
                 // TODO: [CONCURRENCY CONTROL CASE #2 - DIRTY READ]
                 // Sleep for 10 seconds, while sleeping another user (thread) will read the same movie data
-                 System.out.println("updateMovie - Sleeping...");
-                 TimeUnit.SECONDS.sleep(10); // do some work
-                 System.out.println("updateMovie - Done sleeping!");
+                System.out.println("updateMovie - Sleeping...");
+                TimeUnit.SECONDS.sleep(10); // do some work
+                System.out.println("updateMovie - Done sleeping!");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("updateMovie - Node 2 is currently down...");
@@ -1466,13 +1467,15 @@ public class DistributedDBService {
                         if (recentNode1Log == null || !recentNode1Log.getUuid().equalsIgnoreCase(node2Logs.get(i).getUuid())) {
                             node1Recovered = true;
                             Movie movie = node2Repo.getMovieByUUID(node2Logs.get(i).getMovieUuid());
-                            String op = node2Logs.get(i).getOp();
-                            if (op.equalsIgnoreCase("INSERT")) {
-                                node1Repo.addMovie(movie);
-                            } else if (op.equalsIgnoreCase("UPDATE")) {
-                                node1Repo.updateMovie(movie);
-                            } else {
-                                node1Repo.deleteMovie(movie);
+                            if (movie != null) {
+                                String op = node2Logs.get(i).getOp();
+                                if (op.equalsIgnoreCase("INSERT")) {
+                                    node1Repo.addMovie(movie);
+                                } else if (op.equalsIgnoreCase("UPDATE")) {
+                                    node1Repo.updateMovie(movie);
+                                } else {
+                                    node1Repo.deleteMovie(movie);
+                                }
                             }
                             node1Repo.addLog(node2Logs.get(i));
                         }
@@ -1483,13 +1486,15 @@ public class DistributedDBService {
                         if (recentNode1Log == null || !recentNode1Log.getUuid().equalsIgnoreCase(node3Logs.get(i).getUuid())) {
                             node1Recovered = true;
                             Movie movie = node3Repo.getMovieByUUID(node3Logs.get(i).getMovieUuid());
-                            String op = node3Logs.get(i).getOp();
-                            if (op.equalsIgnoreCase("INSERT")) {
-                                node1Repo.addMovie(movie);
-                            } else if (op.equalsIgnoreCase("UPDATE")) {
-                                node1Repo.updateMovie(movie);
-                            } else {
-                                node1Repo.deleteMovie(movie);
+                            if (movie != null) {
+                                String op = node3Logs.get(i).getOp();
+                                if (op.equalsIgnoreCase("INSERT")) {
+                                    node1Repo.addMovie(movie);
+                                } else if (op.equalsIgnoreCase("UPDATE")) {
+                                    node1Repo.updateMovie(movie);
+                                } else {
+                                    node1Repo.deleteMovie(movie);
+                                }
                             }
                             node1Repo.addLog(node3Logs.get(i));
                         }
@@ -1532,13 +1537,15 @@ public class DistributedDBService {
                             node1Logs.get(i).getMovieYear() < 1980) {
                             node2Recovered = true;
                             Movie movie = node1Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid());
-                            String op = node1Logs.get(i).getOp();
-                            if (op.equalsIgnoreCase("INSERT")) {
-                                node2Repo.addMovie(movie);
-                            } else if (op.equalsIgnoreCase("UPDATE")) {
-                                node2Repo.updateMovie(movie);
-                            } else {
-                                node2Repo.deleteMovie(movie);
+                            if (movie != null) {
+                                String op = node1Logs.get(i).getOp();
+                                if (op.equalsIgnoreCase("INSERT")) {
+                                    node2Repo.addMovie(movie);
+                                } else if (op.equalsIgnoreCase("UPDATE")) {
+                                    node2Repo.updateMovie(movie);
+                                } else {
+                                    node2Repo.deleteMovie(movie);
+                                }
                             }
                             node2Repo.addLog(node1Logs.get(i));
                         }
@@ -1577,15 +1584,17 @@ public class DistributedDBService {
                             node1Logs.get(i).getMovieYear() >= 1980) {
                             node3Recovered = true;
                             Movie movie = node1Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid());
-                            String op = node1Logs.get(i).getOp();
-                            if (op.equalsIgnoreCase("INSERT")) {
-                                node3Repo.addMovie(movie);
-                            } else if (op.equalsIgnoreCase("UPDATE")) {
-                                node3Repo.updateMovie(movie);
-                            } else {
-                                node3Repo.deleteMovie(movie);
+                            if (movie != null) {
+                                String op = node1Logs.get(i).getOp();
+                                if (op.equalsIgnoreCase("INSERT")) {
+                                    node3Repo.addMovie(movie);
+                                } else if (op.equalsIgnoreCase("UPDATE")) {
+                                    node3Repo.updateMovie(movie);
+                                } else {
+                                    node3Repo.deleteMovie(movie);
+                                }
+                                node3Repo.addLog(node1Logs.get(i));
                             }
-                            node3Repo.addLog(node1Logs.get(i));
                         }
                     }
 
