@@ -62,6 +62,11 @@ public class DistributedDBService {
     private final int UNAVAILABLE = 2;
     private final int ERROR = 3;
 
+    // for initial check if need for re-sync (always done at start of server)
+    @Autowired
+    @Qualifier("initial")
+    private Boolean initial;
+
     // distributed database re-sync switch
     @Autowired
     @Qualifier("resyncEnabled")
@@ -1368,6 +1373,23 @@ public class DistributedDBService {
     // occurred, specifically unavailability of nodes
     @Scheduled(initialDelay = 1000, fixedDelay = 20000)
     private void resyncDB() {
+        // initial check (always done at start of server)
+        if (initial) {
+            try {
+                // check if all nodes are online
+                node1Repo.tryConnection();
+                node2Repo.tryConnection();
+                node3Repo.tryConnection();
+
+                if (node1Repo.getNode2LogsCount() == node2Repo.getLogsCount() && node1Repo.getNode3LogsCount() == node3Repo.getLogsCount()) {
+                    // disable re-sync as not needed
+                    resyncEnabled = false;
+                }
+            } catch (Exception exception) {}
+            initial = false;
+        }
+
+        // if there is a need for recovery
         if (resyncEnabled) {
             // set maintenance so that user queries will not be accepted during the process (similar to database being down)
             maintenance = true;

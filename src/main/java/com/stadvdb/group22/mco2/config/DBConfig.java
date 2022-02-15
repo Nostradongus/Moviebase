@@ -156,6 +156,11 @@ public class DBConfig {
         return lock;
     }
 
+    @Bean(name="initialCheck")
+    public Boolean initialCheck() {
+        return true;
+    }
+
     @Bean(name="resyncEnabled")
     public Boolean resyncEnabled() {
         return true;
