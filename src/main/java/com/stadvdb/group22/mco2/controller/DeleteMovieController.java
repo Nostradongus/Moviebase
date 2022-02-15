@@ -1,5 +1,6 @@
 package com.stadvdb.group22.mco2.controller;
 
+import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +25,12 @@ public class DeleteMovieController {
         try {
             movieService.deleteMovie(movie);
             return new RedirectView ("/");
+        } catch (TransactionErrorException e) {
+            // TODO: handle exception here for front-end (transaction error, something wrong occurred, try again)
+            return new RedirectView ("/");
         } catch (Exception e) {
-            // TODO: handle exception for front-end
-            return null;
+            // TODO: handle exception here for front-end (database down)
+            return new RedirectView ("/");
         }
     }
 }

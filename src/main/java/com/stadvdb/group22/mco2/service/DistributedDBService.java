@@ -2,6 +2,7 @@ package com.stadvdb.group22.mco2.service;
 
 import com.fasterxml.jackson.databind.ser.std.StdKeySerializers;
 import com.stadvdb.group22.mco2.config.DBConfig;
+import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Log;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
@@ -26,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
@@ -153,7 +155,7 @@ public class DistributedDBService {
         // try connection to node 1 instead
         TransactionStatus status = node1TxManager.getTransaction(definition);
         try {
-            // if node 1 was down before, dont retrieve data as it may have inconsistent data
+            // if node 1 was down before, do not retrieve data as it may have inconsistent data
             if (node1Down) {
                 throw new Exception();
             }
@@ -808,7 +810,7 @@ public class DistributedDBService {
         } else {
             // else, an error has occurred and user has to try the query again in the UI
             System.out.println("addMovie - Cannot perform data retrieval, throwing exception...");
-            throw new Exception();
+            throw new TransactionErrorException();
         }
 
         // if node 2 or 3 failed, rollback node 1 transaction and indicate user to try the query again
@@ -816,7 +818,7 @@ public class DistributedDBService {
             node1TxManager.rollback(node1TxStatus);
             node1Status = ERROR;
             System.out.println("addMovie - Cannot perform data retrieval, throwing exception...");
-            throw new Exception();
+            throw new TransactionErrorException();
         }
 
         // if both nodes are ready for commit
@@ -1024,7 +1026,7 @@ public class DistributedDBService {
         } else {
             // else, an error has occurred and user has to try the query again in the UI
             System.out.println("updateMovie - Cannot perform data retrieval, throwing exception...");
-            throw new Exception();
+            throw new TransactionErrorException();
         }
 
         // if node 2 or 3 failed, rollback node 1 transaction
@@ -1032,7 +1034,7 @@ public class DistributedDBService {
             node1TxManager.rollback(node1TxStatus);
             node1Status = ERROR;
             System.out.println("updateMovie - Cannot perform data retrieval, throwing exception...");
-            throw new Exception();
+            throw new TransactionErrorException();
         }
 
         // if both nodes are ready for commit
@@ -1240,7 +1242,7 @@ public class DistributedDBService {
         } else {
             // else, an error has occurred and user has to try the query again in the UI
             System.out.println("deleteMovie - Cannot perform data retrieval, throwing exception...");
-            throw new Exception();
+            throw new TransactionErrorException();
         }
 
         // if node 2 or 3 failed, rollback node 1 transaction
@@ -1248,7 +1250,7 @@ public class DistributedDBService {
             node1TxManager.rollback(node1TxStatus);
             node1Status = ERROR;
             System.out.println("deleteMovie - Cannot perform data retrieval, throwing exception...");
-            throw new Exception();
+            throw new TransactionErrorException();
         }
 
         // if both nodes are ready for commit
