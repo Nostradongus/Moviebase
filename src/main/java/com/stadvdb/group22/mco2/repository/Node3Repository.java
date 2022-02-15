@@ -1,6 +1,7 @@
 package com.stadvdb.group22.mco2.repository;
 
 import com.stadvdb.group22.mco2.config.DBConfig;
+import com.stadvdb.group22.mco2.model.Log;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ public class Node3Repository {
     public void tryConnection() throws SQLException {
         // try connection to database, if database is down then throw SQLException
         DriverManager.setLoginTimeout(DBConfig.LOGIN_TIME_OUT);
-        Connection connection = DriverManager.getConnection(DBConfig.node2Url, DBConfig.node2Username, DBConfig.node1Password);
+        Connection connection = DriverManager.getConnection(DBConfig.node3Url, DBConfig.node3Username, DBConfig.node3Password);
 
         // close connection afterwards if successful
         connection.close();
@@ -176,5 +177,32 @@ public class Node3Repository {
     public void deleteMovie(Movie movie) throws DataAccessException {
         String sqlQuery = "DELETE FROM movies WHERE uuid=?";
         node3.update(sqlQuery, movie.getUuid());
+    }
+
+    public void addLog(Log log) {
+        String sqlQuery = "INSERT INTO t_log(t_uuid,t_op,movie_uuid,movie_yr,ts) VALUES (?,?,?,?,?)";
+        node3.update(sqlQuery, log.getUuid(), log.getOp(), log.getMovieUuid(), log.getMovieYear(), log.getTs());
+    }
+
+    public Log getRecentLog() {
+        List<Log> logs = node3.query("SELECT * FROM t_log ORDER BY ts DESC LIMIT 1", new LogRowMapper());
+        return logs.size() > 0 ? logs.get(0) : null;
+    }
+
+    public List<Log> getAllLogs() {
+        return node3.query("SELECT * FROM t_log", new LogRowMapper());
+    }
+
+    public List<Log> getLogs(Log log) {
+        return node3.query("SELECT * FROM t_log WHERE ts > ?", new LogRowMapper(), log.getTs());
+    }
+
+    public int getLogsCount() {
+        Integer count = node3.queryForObject("SELECT COUNT(*) FROM t_log", Integer.class);
+        return count == null ? 0 : count;
+    }
+
+    public void deleteLogs() {
+        node3.execute("DELETE FROM t_log");
     }
 }

@@ -60,6 +60,7 @@ public class StatisticsController {
                 return "err_page_not_found";
             }
         } catch (Exception e) {
+            e.printStackTrace();
             return "err_database_down";
         }
     }

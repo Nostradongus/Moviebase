@@ -51,7 +51,8 @@ public class AddMovieController {
             return new RedirectView ("/");
         } catch (Exception e) {
             // TODO: handle exception here for front-end
-            return null;
+            e.printStackTrace();
+            return new RedirectView ("/");
         }
     }
 

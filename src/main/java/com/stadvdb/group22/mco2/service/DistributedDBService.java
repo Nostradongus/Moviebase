@@ -85,7 +85,7 @@ public class DistributedDBService {
     @Qualifier("node3Down")
     private Boolean node3Down;
 
-    // TODO: temporary, might be removed
+    // TODO: temporary (not used), might be removed
     @Autowired
     private ReentrantLock lock;
 
@@ -98,6 +98,12 @@ public class DistributedDBService {
     }
 
     public Movie getMovieByUUID (String uuid, int year) throws Exception {
+        // if at maintenance, cancel operation and inform user
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
+
         // disable distributed db re-sync before performing operation
         resyncEnabled = false;
 
@@ -105,11 +111,14 @@ public class DistributedDBService {
         DefaultTransactionDefinition definition = initTransactionDef();
 
         Movie movie = null;
-        // retrieve data from node 2 or 3 depending on year of movie
+        // retrieve data from node 2 or 3 depending on year of movie, and node 2 or 3 is not down
         if (year < 1980) {
             TransactionStatus status = node2TxManager.getTransaction(definition);
             // try connection to node 2
             try {
+                if (node2Down) {
+                    throw new Exception ();
+                }
                 node2Repo.tryConnection();
                 System.out.println("getMovieByUUID - Reading and retrieving data from node 2...");
                 movie = node2Repo.getMovieByUUID(uuid);
@@ -121,10 +130,13 @@ public class DistributedDBService {
                 node2Down = true; // indicate to server that node 2 is down, to perform re-sync once it is back online
                 System.out.println("getMovieByUUID - Node 2 is currently down...");
             }
-        } else {
+        } else if (year >= 1980) {
             TransactionStatus status = node3TxManager.getTransaction(definition);
             // try connection to node 3
             try {
+                if (node3Down) {
+                    throw new Exception ();
+                }
                 node3Repo.tryConnection();
                 System.out.println("getMovieByUUID - Reading and retrieving data from node 3...");
                 movie = node3Repo.getMovieByUUID(uuid);
@@ -141,6 +153,10 @@ public class DistributedDBService {
         // try connection to node 1 instead
         TransactionStatus status = node1TxManager.getTransaction(definition);
         try {
+            // if node 1 was down before, dont retrieve data as it may have inconsistent data
+            if (node1Down) {
+                throw new Exception();
+            }
             node1Repo.tryConnection();
             System.out.println("getMovieByUUID - Reading and retrieving data from node 1...");
             movie = node1Repo.getMovieByUUID(uuid);
@@ -160,6 +176,11 @@ public class DistributedDBService {
     }
 
     public Page<Movie> getMoviesByPage(int page, int size) throws Exception {
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
+
         // disable resync db
         resyncEnabled = false;
 
@@ -169,6 +190,9 @@ public class DistributedDBService {
         // try connection to node 1 (central node)
         TransactionStatus status = node1TxManager.getTransaction(definition);
         try {
+            if (node1Down) {
+                throw new Exception();
+            }
             Page<Movie> movies = null;
             node1Repo.tryConnection();
             System.out.println("getMoviesByPage - Reading and retrieving data from node 1...");
@@ -187,6 +211,10 @@ public class DistributedDBService {
         TransactionStatus node2Status = node2TxManager.getTransaction(definition);
         TransactionStatus node3Status = node3TxManager.getTransaction(definition);
         try {
+            // if node 2 or 3 down from previous transactions, dont retrieve data as at least one node may contain inconsistent data
+            if (node2Down || node3Down) {
+                throw new Exception();
+            }
             // try connection to both node 2 and 3
             node2Repo.tryConnection();
             node3Repo.tryConnection();
@@ -204,16 +232,16 @@ public class DistributedDBService {
             for (int i = page * size; i < page * size + size; i++) {
                 moviesPage.add(movies.get(i));
             }
-            node2TxManager.commit(node2Status);
             node3TxManager.commit(node3Status);
+            node2TxManager.commit(node2Status);
             if (node1Down) {
                 resyncEnabled = true;
             }
             return new PageImpl<>(moviesPage, PageRequest.of(page, size), total);
         } catch (Exception e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
-            node2TxManager.rollback(node2Status);
             node3TxManager.rollback(node3Status);
+            node2TxManager.rollback(node2Status);
             try {
                 node2Repo.tryConnection();
             } catch (Exception exception) {
@@ -225,12 +253,17 @@ public class DistributedDBService {
                 node3Down = true;
             }
             resyncEnabled = true;
-            System.out.println("getMoviesByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
+            System.out.println("getMoviesPerGenreByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
             throw e;
         }
     }
 
     public Page<Movie> searchMoviesByPage(Movie movie, int page, int size) throws Exception {
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
+
         // disable db resync
         resyncEnabled = false;
 
@@ -245,6 +278,9 @@ public class DistributedDBService {
                 TransactionStatus status = node2TxManager.getTransaction(definition);
                 // try connection to node 2
                 try {
+                    if (node2Down) {
+                        throw new Exception ();
+                    }
                     node2Repo.tryConnection();
                     System.out.println("searchMoviesByPage - Reading and retrieving data from node 2...");
                     movies = node2Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
@@ -256,10 +292,13 @@ public class DistributedDBService {
                     node2Down = true;
                     System.out.println("searchMoviesByPage - Node 2 is currently down...");
                 }
-            } else {
+            } else if (movie.getYear() >= 1980) {
                 TransactionStatus status = node3TxManager.getTransaction(definition);
                 // try connection to node 3
                 try {
+                    if (node3Down) {
+                        throw new Exception ();
+                    }
                     node3Repo.tryConnection();
                     System.out.println("searchMoviesByPage - Reading and retrieving data from node 3...");
                     movies = node3Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
@@ -277,6 +316,9 @@ public class DistributedDBService {
         // try connection to node 1 instead
         TransactionStatus status = node1TxManager.getTransaction(definition);
         try {
+            if (node1Down) {
+                throw new Exception();
+            }
             node1Repo.tryConnection();
             System.out.println("searchMoviesByPage - Reading and retrieving data from node 1...");
             movies = node1Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
@@ -296,6 +338,11 @@ public class DistributedDBService {
     }
 
     public Page<Report> getMoviesPerGenreByPage(int page, int size) throws Exception {
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
+
         // disable resync db
         resyncEnabled = false;
 
@@ -305,6 +352,9 @@ public class DistributedDBService {
         // try connection to node 1 (central node)
         TransactionStatus status = node1TxManager.getTransaction(definition);
         try {
+            if (node1Down) {
+                throw new Exception();
+            }
             Page<Report> reports = null;
             node1Repo.tryConnection();
             System.out.println("getMoviesPerGenreByPage - Reading and retrieving data from node 1...");
@@ -323,6 +373,9 @@ public class DistributedDBService {
         TransactionStatus node2Status = node2TxManager.getTransaction(definition);
         TransactionStatus node3Status = node3TxManager.getTransaction(definition);
         try {
+            if (node2Down || node3Down) {
+                throw new Exception ();
+            }
             // try connection to both node 2 and 3
             node2Repo.tryConnection();
             node3Repo.tryConnection();
@@ -346,6 +399,8 @@ public class DistributedDBService {
                 }
                 if (unique) {
                     reports.add(node3Reports.get(i));
+                } else {
+                    total -= 1;
                 }
             }
             // get specific reports according to page number and size
@@ -353,16 +408,16 @@ public class DistributedDBService {
             for (int i = page * size; i < page * size + size; i++) {
                 reportsPage.add(reports.get(i));
             }
-            node2TxManager.commit(node2Status);
             node3TxManager.commit(node3Status);
+            node2TxManager.commit(node2Status);
             if (node1Down) {
                 resyncEnabled = true;
             }
             return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
         } catch (Exception e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
-            node2TxManager.rollback(node2Status);
             node3TxManager.rollback(node3Status);
+            node2TxManager.rollback(node2Status);
             try {
                 node2Repo.tryConnection();
             } catch (Exception exception) {
@@ -380,6 +435,11 @@ public class DistributedDBService {
     }
 
     public Page<Report> getMoviesPerDirectorByPage(int page, int size) throws Exception {
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
+
         // disable resync db
         resyncEnabled = false;
 
@@ -389,6 +449,9 @@ public class DistributedDBService {
         // try connection to node 1 (central node)
         TransactionStatus status = node1TxManager.getTransaction(definition);
         try {
+            if (node1Down) {
+                throw new Exception();
+            }
             Page<Report> reports = null;
             node1Repo.tryConnection();
             System.out.println("getMoviesPerDirectorByPage - Reading and retrieving data from node 1...");
@@ -407,6 +470,9 @@ public class DistributedDBService {
         TransactionStatus node2Status = node2TxManager.getTransaction(definition);
         TransactionStatus node3Status = node3TxManager.getTransaction(definition);
         try {
+            if (node2Down || node3Down) {
+                throw new Exception();
+            }
             // try connection to both node 2 and 3
             node2Repo.tryConnection();
             node3Repo.tryConnection();
@@ -430,6 +496,8 @@ public class DistributedDBService {
                 }
                 if (unique) {
                     reports.add(node3Reports.get(i));
+                } else {
+                    total -= 1;
                 }
             }
             // get specific reports according to page number and size
@@ -437,16 +505,16 @@ public class DistributedDBService {
             for (int i = page * size; i < page * size + size; i++) {
                 reportsPage.add(reports.get(i));
             }
-            node2TxManager.commit(node2Status);
             node3TxManager.commit(node3Status);
+            node2TxManager.commit(node2Status);
             if (node1Down) {
                 resyncEnabled = true;
             }
             return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
         } catch (Exception e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
-            node2TxManager.rollback(node2Status);
             node3TxManager.rollback(node3Status);
+            node2TxManager.rollback(node2Status);
             try {
                 node2Repo.tryConnection();
             } catch (Exception exception) {
@@ -464,6 +532,11 @@ public class DistributedDBService {
     }
 
     public Page<Report> getMoviesPerActorByPage(int page, int size) throws Exception {
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
+
         // disable resync db
         resyncEnabled = false;
 
@@ -473,6 +546,9 @@ public class DistributedDBService {
         // try connection to node 1 (central node)
         TransactionStatus status = node1TxManager.getTransaction(definition);
         try {
+            if (node1Down) {
+                throw new Exception ();
+            }
             Page<Report> reports = null;
             node1Repo.tryConnection();
             System.out.println("getMoviesPerActorByPage - Reading and retrieving data from node 1...");
@@ -491,6 +567,9 @@ public class DistributedDBService {
         TransactionStatus node2Status = node2TxManager.getTransaction(definition);
         TransactionStatus node3Status = node3TxManager.getTransaction(definition);
         try {
+            if (node2Down || node3Down) {
+                throw new Exception ();
+            }
             // try connection to both node 2 and 3
             node2Repo.tryConnection();
             node3Repo.tryConnection();
@@ -514,6 +593,8 @@ public class DistributedDBService {
                 }
                 if (unique) {
                     reports.add(node3Reports.get(i));
+                } else {
+                    total -= 1;
                 }
             }
             // get specific reports according to page number and size
@@ -521,16 +602,16 @@ public class DistributedDBService {
             for (int i = page * size; i < page * size + size; i++) {
                 reportsPage.add(reports.get(i));
             }
-            node2TxManager.commit(node2Status);
             node3TxManager.commit(node3Status);
+            node2TxManager.commit(node2Status);
             if (node1Down) {
                 resyncEnabled = true;
             }
             return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
         } catch (Exception e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
-            node2TxManager.rollback(node2Status);
             node3TxManager.rollback(node3Status);
+            node2TxManager.rollback(node2Status);
             try {
                 node2Repo.tryConnection();
             } catch (Exception exception) {
@@ -548,6 +629,11 @@ public class DistributedDBService {
     }
 
     public Page<Report> getMoviesPerYearByPage(int page, int size) throws Exception {
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
+
         // disable resync db
         resyncEnabled = false;
 
@@ -557,6 +643,9 @@ public class DistributedDBService {
         // try connection to node 1 (central node)
         TransactionStatus status = node1TxManager.getTransaction(definition);
         try {
+            if (node1Down) {
+                throw new Exception ();
+            }
             Page<Report> reports = null;
             node1Repo.tryConnection();
             System.out.println("getMoviesPerYearByPage - Reading and retrieving data from node 1...");
@@ -575,6 +664,9 @@ public class DistributedDBService {
         TransactionStatus node2Status = node2TxManager.getTransaction(definition);
         TransactionStatus node3Status = node3TxManager.getTransaction(definition);
         try {
+            if (node2Down || node3Down) {
+                throw new Exception ();
+            }
             // try connection to both node 2 and 3
             node2Repo.tryConnection();
             node3Repo.tryConnection();
@@ -586,35 +678,22 @@ public class DistributedDBService {
             reports = node2Repo.getMoviesPerYear();
             System.out.println("getMoviesPerYearByPage - Reading and retrieving data from node 3...");
             total += node3Repo.getNumOfYears();
-            List<Report> node3Reports = node3Repo.getMoviesPerYear();
-            for (int i = 0; i < node3Reports.size(); i++) {
-                // append report to list if it is not found on the current report list, else combine / add count
-                boolean unique = true;
-                for (int j = 0; j < reports.size() && unique; j++) {
-                    if (reports.get(j).getLabel().equalsIgnoreCase(node3Reports.get(i).getLabel())) {
-                        reports.get(j).setCount(reports.get(j).getCount() + node3Reports.get(i).getCount());
-                        unique = false;
-                    }
-                }
-                if (unique) {
-                    reports.add(node3Reports.get(i));
-                }
-            }
+            reports.addAll(node3Repo.getMoviesPerYear());
             // get specific reports according to page number and size
             List<Report> reportsPage = new ArrayList<>();
             for (int i = page * size; i < page * size + size; i++) {
                 reportsPage.add(reports.get(i));
             }
-            node2TxManager.commit(node2Status);
             node3TxManager.commit(node3Status);
+            node2TxManager.commit(node2Status);
             if (node1Down) {
                 resyncEnabled = true;
             }
             return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
         } catch (Exception e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
-            node2TxManager.rollback(node2Status);
             node3TxManager.rollback(node3Status);
+            node2TxManager.rollback(node2Status);
             try {
                 node2Repo.tryConnection();
             } catch (Exception exception) {
@@ -637,11 +716,11 @@ public class DistributedDBService {
 
     public void addMovie(Movie movie) throws Exception {
         // STRATEGY: Insert new movie data to node 1 first then insert to node 2 or 3 depending on year of new movie
-        // - If node 1 is down, continue writing operation to node 2 or 3
-        // - If node 1 transaction is successful but node 2 or 3 transaction failed, check recent transaction log of each
-        //   and redo operations if all node transaction logs stated "commit". If at least one node transaction log
-        //   did not state "commit" then rollback operations on the other nodes that had "commit" transactions
-        // - Let resyncDB() do the data replication process (re-syncing) to the nodes if database down problem occurs
+        // RECOVERY METHOD: Deferred Modification
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
 
         // disable db resync
         resyncEnabled = false;
@@ -650,263 +729,860 @@ public class DistributedDBService {
         int node1Status = INIT;
         int node2Status = INIT;
         int node3Status = INIT;
-
-        // node logs
-        List<Log> node1Logs = new ArrayList<>();
-        List<Log> node2Logs = new ArrayList<>();
-        List<Log> node3Logs = new ArrayList<>();
-
-        // transaction definition
-        DefaultTransactionDefinition definition = initTransactionDef();
-
-        // node transaction statuses
-        TransactionStatus node1TxStatus = node1TxManager.getTransaction(definition);
-        TransactionStatus node2TxStatus = node2TxManager.getTransaction(definition);
-        TransactionStatus node3TxStatus = node3TxManager.getTransaction(definition);
+        // node transaction statuses (by order of commit / rollback, node2 / node3 then node1)
+        TransactionStatus node1TxStatus = null;
+        TransactionStatus node2TxStatus = null;
+        TransactionStatus node3TxStatus = null;
 
         // generate new transaction uuid
         String tUuid = UUID.randomUUID().toString();
 
-        // try connection to node 1 before inserting new movie data
+        node1TxStatus = node1TxManager.getTransaction(initTransactionDef());
         try {
+            if (node1Down) {
+                throw new SQLException ();
+            }
+            // try connection to node 1 before inserting new movie data
             node1Repo.tryConnection();
             System.out.println("addMovie - Inserting new movie data to node 1...");
-            // start transaction
-            node1Logs.add(new Log(tUuid, "START", getCurrTimestamp()));
-            // log before write
-            node1Logs.add(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
             node1Repo.addMovie(movie);
-            // log before commit
-            node1Logs.add(new Log(tUuid, "COMMIT", getCurrTimestamp()));
             node1Status = OK; // transaction is ready for commit
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("addMovie - Node 1 is currently down...");
+            node1TxManager.rollback(node1TxStatus);
+            node1Down = true;
             node1Status = UNAVAILABLE;
         } catch (Exception exception) {
+            // transaction error during insertion, rollback and don't redo
             System.out.println("addMovie - Error occurred during transaction in node 1...");
+            node1TxManager.rollback(node1TxStatus);
             node1Status = ERROR;
         }
 
-        // insert new data to node 2 or 3 as well depending on year of new movie
-        if (movie.getYear() < 1980) {
-            // try connection to node 2 before inserting new data
+        // if node 1 transaction ready for commit or is unavailable
+        if ((node1Status == OK || node1Status == UNAVAILABLE) && movie.getYear() < 1980) {
+            node2TxStatus = node2TxManager.getTransaction(initTransactionDef());
             try {
+                if (node2Down) {
+                    throw new SQLException ();
+                }
+                // try connection to node 2 before inserting new data
                 node2Repo.tryConnection();
                 System.out.println("addMovie - Inserting new movie data to node 2...");
-                node2Logs.add(new Log(tUuid, "START", getCurrTimestamp()));
-                node2Logs.add(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
                 node2Repo.addMovie(movie);
-                node2Logs.add(new Log(tUuid, "COMMIT", getCurrTimestamp()));
                 node2Status = OK;
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("addMovie - Node 2 is currently down...");
+                node2TxManager.rollback(node2TxStatus);
+                node2Down = true;
                 node2Status = UNAVAILABLE;
             } catch (Exception exception) {
                 System.out.println("addMovie - Error occurred during transaction in node 2...");
+                node2TxManager.rollback(node2TxStatus);
                 node2Status = ERROR;
             }
-        } else {
-            // try connection to node 3 before inserting new data
+        } else if ((node1Status == OK || node1Status == UNAVAILABLE) && movie.getYear() >= 1980) {
+            node3TxStatus = node3TxManager.getTransaction(initTransactionDef());
             try {
+                if (node3Down) {
+                    throw new SQLException ();
+                }
+                // try connection to node 3 before inserting new data
                 node3Repo.tryConnection();
                 System.out.println("addMovie - Inserting new movie data to node 3...");
-                node3Logs.add(new Log(tUuid, "START", getCurrTimestamp()));
-                node3Logs.add(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
                 node3Repo.addMovie(movie);
-                node3Logs.add(new Log(tUuid, "COMMIT", getCurrTimestamp()));
                 node3Status = OK;
             } catch (SQLException sqlException) {
                 // node 3 is currently down
                 System.out.println("addMovie - Node 3 is currently down...");
+                node3TxManager.rollback(node3TxStatus);
+                node3Down = true;
                 node3Status = UNAVAILABLE;
             } catch (Exception exception) {
                 System.out.println("addMovie - Error occurred during transaction in node 3...");
+                node3TxManager.rollback(node3TxStatus);
                 node3Status = ERROR;
             }
+        } else {
+            // else, an error has occurred and user has to try the query again in the UI
+            System.out.println("addMovie - Cannot perform data retrieval, throwing exception...");
+            throw new Exception();
         }
 
-        // DATABASE RECOVERY
-        // if nodes' transactions are ready to commit
-        node1TxManager.rollback(node1TxStatus);
-        node2TxManager.rollback(node2TxStatus);
+        // if node 2 or 3 failed, rollback node 1 transaction and indicate user to try the query again
+        if (node2Status == ERROR || node3Status == ERROR) {
+            node1TxManager.rollback(node1TxStatus);
+            node1Status = ERROR;
+            System.out.println("addMovie - Cannot perform data retrieval, throwing exception...");
+            throw new Exception();
+        }
+
+        // if both nodes are ready for commit
+        if (node1Status == OK || node1Status == UNAVAILABLE) {
+            if (node2Status == OK) {
+                // try node 2 commit transaction
+                try {
+                    // add transaction log
+                    node2Repo.addLog(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node2TxManager.commit(node2TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node2TxManager.rollback(node2TxStatus);
+                    node2Status = ERROR;
+                }
+            } else if (node3Status == OK) {
+                // try node 3 commit transaction
+                try {
+                    // add transaction log
+                    node3Repo.addLog(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node3TxManager.commit(node3TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node3TxManager.rollback(node3TxStatus);
+                    node3Status = ERROR;
+                }
+            }
+            // try node 1 commit transaction
+            if (node1Status == OK) {
+                try {
+                    node1Repo.addLog(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node1TxManager.commit(node1TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node1TxManager.rollback(node1TxStatus);
+                    node1Status = ERROR;
+                }
+            }
+            // recover if node 2 failed
+            while (node2Status == ERROR) {
+                node2TxStatus = node2TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 2 might be down, try connection
+                    node2Repo.tryConnection();
+                    node2Repo.addMovie(movie);
+                    node2Repo.addLog(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node2TxManager.commit(node2TxStatus);
+                    node2Status = OK; // node 2 now recovered
+                } catch (SQLException sqlException) {
+                    node2TxManager.rollback(node2TxStatus);
+                    node2Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node2TxManager.rollback(node2TxStatus);
+                }
+            }
+            // recover if node 3 failed
+            while (node3Status == ERROR) {
+                node3TxStatus = node3TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 2 might be down, try connection
+                    node3Repo.tryConnection();
+                    node3Repo.addMovie(movie);
+                    node3Repo.addLog(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node3TxManager.commit(node3TxStatus);
+                    node3Status = OK; // node 2 now recovered
+                } catch (SQLException sqlException) {
+                    node3TxManager.rollback(node3TxStatus);
+                    node3Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node3TxManager.rollback(node3TxStatus);
+                }
+            }
+            // recover if node 1 failed
+            while (node1Status == ERROR) {
+                node1TxStatus = node1TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 1 might be down, try connection
+                    node1Repo.tryConnection();
+                    node1Repo.addMovie(movie);
+                    node1Repo.addLog(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node1TxManager.commit(node1TxStatus);
+                    node1Status = OK; // node 1 now recovered
+                } catch (SQLException sqlException) {
+                    node1TxManager.rollback(node1TxStatus);
+                    node1Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node1TxManager.rollback(node1TxStatus);
+                }
+            }
+        }
+        // if nodes suddenly went down or unavailable, signal server for db re-sync
+        if (node1Status == UNAVAILABLE) {
+            node1Down = true;
+            resyncEnabled = true;
+        }
+        if (node2Status == UNAVAILABLE) {
+            node2Down = true;
+            resyncEnabled = true;
+        }
+        if (node3Status == UNAVAILABLE) {
+            node3Down = true;
+            resyncEnabled = true;
+        }
+        // operation cannot be done as both nodes are unavailable, throw exception for user to try again the query later
+        if (node1Status == UNAVAILABLE && (node2Status == UNAVAILABLE || node3Status == UNAVAILABLE)) {
+            System.out.println("addMovie - Nodes are down, throwing exception...");
+            throw new Exception ();
+        }
     }
 
     public void updateMovie(Movie movie) throws Exception {
         // STRATEGY: Update existing movie data to node 1 first then update to node 2 or 3 depending on year of new movie
-        // - If node 1 is down, continue writing operation to node 2 or 3
-        // - If node 1 transaction is successful but node 2 or 3 transaction failed, check recent transaction log of each
-        //   and redo operations if all node transaction logs stated "commit". If at least one node transaction log
-        //   did not state "commit" then rollback operations on the other nodes that had "commit" transactions
-        // - Let resyncDB() do the data replication process (re-syncing) to the nodes if database down problem occurs
+        // RECOVERY METHOD: Deferred Modification
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
 
-        // disable resync db
-        toggleResyncDB();
+        // disable db resync
+        resyncEnabled = false;
 
-        int node1Status = OK;
-        int node2Status = OK;
-        int node3Status = OK;
+        // node statuses
+        int node1Status = INIT;
+        int node2Status = INIT;
+        int node3Status = INIT;
+        // node transaction statuses (by order of commit / rollback, node2 / node3 then node1)
+        TransactionStatus node1TxStatus = null;
+        TransactionStatus node2TxStatus = null;
+        TransactionStatus node3TxStatus = null;
 
-        // transaction definition
-        DefaultTransactionDefinition definition = initTransactionDef();
+        // generate new transaction uuid
+        String tUuid = UUID.randomUUID().toString();
 
-        // try connection to node 1 before updating existing movie data
-        TransactionStatus status = node1TxManager.getTransaction(definition);
+        node1TxStatus = node1TxManager.getTransaction(initTransactionDef());
         try {
+            if (node1Down) {
+                throw new SQLException();
+            }
+            // try connection to node 1 before updating movie data
             node1Repo.tryConnection();
-            System.out.println("updateMovie - Updating movie data on node 1...");
+            System.out.println("updateMovie - Updating movie data to node 1...");
             node1Repo.updateMovie(movie);
-            node1TxManager.commit(status);
+            node1Status = OK; // transaction is ready for commit
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("updateMovie - Node 1 is currently down...");
+            node1TxManager.rollback(node1TxStatus);
+            node1Down = true;
             node1Status = UNAVAILABLE;
         } catch (Exception exception) {
-            // error occurred during transaction, set for database recovery
-            node1TxManager.rollback(status);
+            // transaction error during insertion, rollback and don't redo
             System.out.println("updateMovie - Error occurred during transaction in node 1...");
+            node1TxManager.rollback(node1TxStatus);
             node1Status = ERROR;
         }
 
-        // update data to node 2 or 3 as well depending on year of new movie
-        if (movie.getYear() < 1980) {
-            status = node2TxManager.getTransaction(definition);
-            // try connection to node 2 before updating existing data
+        // if node 1 transaction ready for commit or is unavailable
+        if ((node1Status == OK || node1Status == UNAVAILABLE) && movie.getYear() < 1980) {
+            node2TxStatus = node2TxManager.getTransaction(initTransactionDef());
             try {
+                if (node2Down) {
+                    throw new SQLException();
+                }
+                // try connection to node 2 before updating data
                 node2Repo.tryConnection();
-                System.out.println("updateMovie - Updating movie data on node 2...");
+                System.out.println("updateMovie - Updating movie data to node 2...");
                 node2Repo.updateMovie(movie);
-                node2TxManager.commit(status);
+                node2Status = OK;
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("updateMovie - Node 2 is currently down...");
+                node2TxManager.rollback(node2TxStatus);
+                node2Down = true;
                 node2Status = UNAVAILABLE;
             } catch (Exception exception) {
-                // error occurred during transaction, set for database recovery
-                node2TxManager.rollback(status);
                 System.out.println("updateMovie - Error occurred during transaction in node 2...");
+                node2TxManager.rollback(node2TxStatus);
                 node2Status = ERROR;
             }
-        } else {
-            status = node3TxManager.getTransaction(definition);
-            // try connection to node 3 before updating existing data
+        } else if ((node1Status == OK || node1Status == UNAVAILABLE) && movie.getYear() >= 1980) {
+            node3TxStatus = node3TxManager.getTransaction(initTransactionDef());
             try {
+                if (node3Down) {
+                    throw new SQLException();
+                }
+                // try connection to node 3 before updating new data
                 node3Repo.tryConnection();
-                System.out.println("updateMovie - Updating movie data on node 3...");
+                System.out.println("updateMovie - Updating movie data to node 3...");
                 node3Repo.updateMovie(movie);
-                node3TxManager.commit(status);
+                node3Status = OK;
             } catch (SQLException sqlException) {
                 // node 3 is currently down
                 System.out.println("updateMovie - Node 3 is currently down...");
+                node3TxManager.rollback(node3TxStatus);
+                node3Down = true;
                 node3Status = UNAVAILABLE;
             } catch (Exception exception) {
-                // error occurred during transaction, set for database recovery
-                node3TxManager.rollback(status);
                 System.out.println("updateMovie - Error occurred during transaction in node 3...");
+                node3TxManager.rollback(node3TxStatus);
                 node3Status = ERROR;
             }
+        } else {
+            // else, an error has occurred and user has to try the query again in the UI
+            System.out.println("updateMovie - Cannot perform data retrieval, throwing exception...");
+            throw new Exception();
         }
 
-        // TODO: implement database recovery
+        // if node 2 or 3 failed, rollback node 1 transaction
+        if (node2Status == ERROR || node3Status == ERROR) {
+            node1TxManager.rollback(node1TxStatus);
+            node1Status = ERROR;
+            System.out.println("updateMovie - Cannot perform data retrieval, throwing exception...");
+            throw new Exception();
+        }
 
-        // enable db resync
-        toggleResyncDB();
+        // if both nodes are ready for commit
+        if (node1Status == OK || node1Status == UNAVAILABLE) {
+            if (node2Status == OK) {
+                // try node 2 commit transaction
+                try {
+                    // add transaction log
+                    node2Repo.addLog(new Log(tUuid, "UPDATE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node2TxManager.commit(node2TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node2TxManager.rollback(node2TxStatus);
+                    node2Status = ERROR;
+                }
+            } else if (node3Status == OK) {
+                // try node 3 commit transaction
+                try {
+                    // add transaction log
+                    node3Repo.addLog(new Log(tUuid, "UPDATE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node3TxManager.commit(node3TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node3TxManager.rollback(node3TxStatus);
+                    node3Status = ERROR;
+                }
+            }
+            // try node 1 commit transaction
+            if (node1Status == OK) {
+                try {
+                    node1Repo.addLog(new Log(tUuid, "UPDATE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node1TxManager.commit(node1TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node1TxManager.rollback(node1TxStatus);
+                    node1Status = ERROR;
+                }
+            }
+            // recover if node 2 failed
+            while (node2Status == ERROR) {
+                node2TxStatus = node2TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 2 might be down, try connection
+                    node2Repo.tryConnection();
+                    node2Repo.updateMovie(movie);
+                    node2Repo.addLog(new Log(tUuid, "UPDATE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node2TxManager.commit(node2TxStatus);
+                    node2Status = OK; // node 2 now recovered
+                } catch (SQLException sqlException) {
+                    node2TxManager.rollback(node2TxStatus);
+                    node2Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node2TxManager.rollback(node2TxStatus);
+                }
+            }
+            // recover if node 3 failed
+            while (node3Status == ERROR) {
+                node3TxStatus = node3TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 2 might be down, try connection
+                    node3Repo.tryConnection();
+                    node3Repo.updateMovie(movie);
+                    node3Repo.addLog(new Log(tUuid, "UPDATE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node3TxManager.commit(node3TxStatus);
+                    node3Status = OK; // node 2 now recovered
+                } catch (SQLException sqlException) {
+                    node3TxManager.rollback(node3TxStatus);
+                    node3Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node3TxManager.rollback(node3TxStatus);
+                }
+            }
+            // recover if node 1 failed
+            while (node1Status == ERROR) {
+                node1TxStatus = node1TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 1 might be down, try connection
+                    node1Repo.tryConnection();
+                    node1Repo.updateMovie(movie);
+                    node1Repo.addLog(new Log(tUuid, "UPDATE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node1TxManager.commit(node1TxStatus);
+                    node1Status = OK; // node 1 now recovered
+                } catch (SQLException sqlException) {
+                    node1TxManager.rollback(node1TxStatus);
+                    node1Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node1TxManager.rollback(node1TxStatus);
+                }
+            }
+        }
+        // if nodes suddenly went down or unavailable, signal server for db re-sync
+        if (node1Status == UNAVAILABLE) {
+            node1Down = true;
+            resyncEnabled = true;
+        }
+        if (node2Status == UNAVAILABLE) {
+            node2Down = true;
+            resyncEnabled = true;
+        }
+        if (node3Status == UNAVAILABLE) {
+            node3Down = true;
+            resyncEnabled = true;
+        }
+        // operation cannot be done, throw exception as user will need to try it again
+        if (node1Status == UNAVAILABLE && (node2Status == UNAVAILABLE || node3Status == UNAVAILABLE)) {
+            System.out.println("updateMovie - Nodes are down, throwing exception...");
+            throw new Exception ();
+        }
     }
 
     public void deleteMovie(Movie movie) throws Exception {
         // STRATEGY: Delete existing movie data on node 1 first then deleting on node 2 or 3 depending on year of new movie
-        // - If node 1 is down, continue writing operation to node 2 or 3
-        // - If node 1 transaction is successful but node 2 or 3 transaction failed, check recent transaction log of each
-        //   and redo operations if all node transaction logs stated "commit". If at least one node transaction log
-        //   did not state "commit" then rollback operations on the other nodes that had "commit" transactions
-        // - Let resyncDB() do the data replication process (re-syncing) to the nodes if database down problem occurs
+        // RECOVERY METHOD: Deferred Modification
+        if (maintenance) {
+            System.out.println("Server in maintenance...");
+            throw new Exception ();
+        }
 
-        // disable resync db
-        toggleResyncDB();
+        // disable db resync
+        resyncEnabled = false;
 
-        int node1Status = OK;
-        int node2Status = OK;
-        int node3Status = OK;
+        // node statuses
+        int node1Status = INIT;
+        int node2Status = INIT;
+        int node3Status = INIT;
+        // node transaction statuses (by order of commit / rollback, node2 / node3 then node1)
+        TransactionStatus node1TxStatus = null;
+        TransactionStatus node2TxStatus = null;
+        TransactionStatus node3TxStatus = null;
 
-        // transaction definition
-        DefaultTransactionDefinition definition = initTransactionDef();
+        // generate new transaction uuid
+        String tUuid = UUID.randomUUID().toString();
 
-        // try connection to node 1 before deleting existing data
-        TransactionStatus status = node1TxManager.getTransaction(definition);
+        node1TxStatus = node1TxManager.getTransaction(initTransactionDef());
         try {
+            if (node1Down) {
+                throw new SQLException();
+            }
+            // try connection to node 1 before deleting movie data
             node1Repo.tryConnection();
-            System.out.println("deleteMovie - Deleting movie data on node 1...");
+            System.out.println("deleteMovie - Deleting movie data to node 1...");
             node1Repo.deleteMovie(movie);
-            node1TxManager.commit(status);
+            node1Status = OK; // transaction is ready for commit
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("deleteMovie - Node 1 is currently down...");
+            node1TxManager.rollback(node1TxStatus);
+            node1Down = true;
             node1Status = UNAVAILABLE;
         } catch (Exception exception) {
-            // error occurred during transaction, set for database recovery
-            node1TxManager.rollback(status);
+            // transaction error during insertion, rollback and don't redo
             System.out.println("deleteMovie - Error occurred during transaction in node 1...");
+            node1TxManager.rollback(node1TxStatus);
             node1Status = ERROR;
         }
 
-        // delete data on node 2 or 3 as well depending on year of new movie
-        if (movie.getYear() < 1980) {
-            status = node2TxManager.getTransaction(definition);
-            // try connection to node 2 before deleting existing data
+        // if node 1 transaction ready for commit or is unavailable
+        if ((node1Status == OK || node1Status == UNAVAILABLE) && movie.getYear() < 1980) {
+            node2TxStatus = node2TxManager.getTransaction(initTransactionDef());
             try {
+                if (node2Down) {
+                    throw new SQLException();
+                }
+                // try connection to node 2 before deleting data
                 node2Repo.tryConnection();
-                System.out.println("deleteMovie - Deleting movie data on node 2...");
+                System.out.println("deleteMovie - Deleting movie data to node 2...");
                 node2Repo.deleteMovie(movie);
-                node2TxManager.commit(status);
+                node2Status = OK;
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("deleteMovie - Node 2 is currently down...");
+                node2TxManager.rollback(node2TxStatus);
+                node2Down = true;
                 node2Status = UNAVAILABLE;
             } catch (Exception exception) {
-                // error occurred during transaction, set for database recovery
-                node2TxManager.rollback(status);
                 System.out.println("deleteMovie - Error occurred during transaction in node 2...");
+                node2TxManager.rollback(node2TxStatus);
                 node2Status = ERROR;
             }
-        } else {
-            status = node3TxManager.getTransaction(definition);
-            // try connection to node 3 before updating existing data
+        } else if ((node1Status == OK || node1Status == UNAVAILABLE) && movie.getYear() >= 1980) {
+            node3TxStatus = node3TxManager.getTransaction(initTransactionDef());
             try {
+                if (node3Down) {
+                    throw new SQLException();
+                }
+                // try connection to node 3 before deleting data
                 node3Repo.tryConnection();
-                System.out.println("deleteMovie - Deleting movie data on node 3...");
+                System.out.println("deleteMovie - Deleting movie data to node 3...");
                 node3Repo.deleteMovie(movie);
-                node3TxManager.commit(status);
+                node3Status = OK;
             } catch (SQLException sqlException) {
                 // node 3 is currently down
                 System.out.println("deleteMovie - Node 3 is currently down...");
+                node3TxManager.rollback(node3TxStatus);
+                node3Down = true;
                 node3Status = UNAVAILABLE;
             } catch (Exception exception) {
-                // error occurred during transaction, set for database recovery
-                node3TxManager.rollback(status);
                 System.out.println("deleteMovie - Error occurred during transaction in node 3...");
+                node3TxManager.rollback(node3TxStatus);
                 node3Status = ERROR;
             }
+        } else {
+            // else, an error has occurred and user has to try the query again in the UI
+            System.out.println("deleteMovie - Cannot perform data retrieval, throwing exception...");
+            throw new Exception();
         }
 
-        // TODO: implement database recovery
+        // if node 2 or 3 failed, rollback node 1 transaction
+        if (node2Status == ERROR || node3Status == ERROR) {
+            node1TxManager.rollback(node1TxStatus);
+            node1Status = ERROR;
+            System.out.println("deleteMovie - Cannot perform data retrieval, throwing exception...");
+            throw new Exception();
+        }
 
-        // enable resync db
-        toggleResyncDB();
+        // if both nodes are ready for commit
+        if (node1Status == OK || node1Status == UNAVAILABLE) {
+            if (node2Status == OK) {
+                // try node 2 commit transaction
+                try {
+                    // add transaction log
+                    node2Repo.addLog(new Log(tUuid, "DELETE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node2TxManager.commit(node2TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node2TxManager.rollback(node2TxStatus);
+                    node2Status = ERROR;
+                }
+            } else if (node3Status == OK) {
+                // try node 3 commit transaction
+                try {
+                    // add transaction log
+                    node3Repo.addLog(new Log(tUuid, "DELETE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node3TxManager.commit(node3TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node3TxManager.rollback(node3TxStatus);
+                    node3Status = ERROR;
+                }
+            }
+            // try node 1 commit transaction
+            if (node1Status == OK) {
+                try {
+                    node1Repo.addLog(new Log(tUuid, "DELETE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node1TxManager.commit(node1TxStatus);
+                } catch (Exception e) {
+                    // failure occurred during commit, rollback
+                    node1TxManager.rollback(node1TxStatus);
+                    node1Status = ERROR;
+                }
+            }
+            // recover if node 2 failed
+            while (node2Status == ERROR) {
+                node2TxStatus = node2TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 2 might be down, try connection
+                    node2Repo.tryConnection();
+                    node2Repo.deleteMovie(movie);
+                    node2Repo.addLog(new Log(tUuid, "DELETE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node2TxManager.commit(node2TxStatus);
+                    node2Status = OK; // node 2 now recovered
+                } catch (SQLException sqlException) {
+                    node2TxManager.rollback(node2TxStatus);
+                    node2Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node2TxManager.rollback(node2TxStatus);
+                }
+            }
+            // recover if node 3 failed
+            while (node3Status == ERROR) {
+                node3TxStatus = node3TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 2 might be down, try connection
+                    node3Repo.tryConnection();
+                    node3Repo.deleteMovie(movie);
+                    node3Repo.addLog(new Log(tUuid, "DELETE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node3TxManager.commit(node3TxStatus);
+                    node3Status = OK; // node 2 now recovered
+                } catch (SQLException sqlException) {
+                    node3TxManager.rollback(node3TxStatus);
+                    node3Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node3TxManager.rollback(node3TxStatus);
+                }
+            }
+            // recover if node 1 failed
+            while (node1Status == ERROR) {
+                node1TxStatus = node1TxManager.getTransaction(initTransactionDef());
+                try {
+                    // node 1 might be down, try connection
+                    node1Repo.tryConnection();
+                    node1Repo.deleteMovie(movie);
+                    node1Repo.addLog(new Log(tUuid, "DELETE", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+                    node1TxManager.commit(node1TxStatus);
+                    node1Status = OK; // node 1 now recovered
+                } catch (SQLException sqlException) {
+                    node1TxManager.rollback(node1TxStatus);
+                    node1Status = UNAVAILABLE;
+                } catch (Exception e) {
+                    // another transaction failure, try again
+                    node1TxManager.rollback(node1TxStatus);
+                }
+            }
+        }
+        // if nodes suddenly went down or unavailable, signal server for db re-sync
+        if (node1Status == UNAVAILABLE) {
+            node1Down = true;
+            resyncEnabled = true;
+        }
+        if (node2Status == UNAVAILABLE) {
+            node2Down = true;
+            resyncEnabled = true;
+        }
+        if (node3Status == UNAVAILABLE) {
+            node3Down = true;
+            resyncEnabled = true;
+        }
+        // operation cannot be done, throw exception as user will need to try it again
+        if (node1Status == UNAVAILABLE && (node2Status == UNAVAILABLE || node3Status == UNAVAILABLE)) {
+            System.out.println("deleteMovie - Nodes are down, throwing exception...");
+            throw new Exception ();
+        }
     }
 
-    // executes every 10 seconds, performs re-syncing of distributed database in case if system failures previously
+    // executes every 20 seconds if enabled, performs re-syncing of distributed database in case if system failures
     // occurred, specifically unavailability of nodes
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(initialDelay = 1000, fixedDelay = 20000)
     private void resyncDB() {
-        // TODO: implement distributed DB resync-ing (database recovery)
         if (resyncEnabled) {
-            System.out.println("Test resync...");
-        }
-    }
+            // set maintenance so that user queries will not be accepted during the process (similar to database being down)
+            maintenance = true;
 
-    private void toggleResyncDB() {
-        resyncEnabled = !resyncEnabled;
+            System.out.println("resyncDB - Performing recovery...");
+
+            boolean node1Recovery = true;
+            boolean node2Recovery = true;
+            boolean node3Recovery = true;
+            boolean node1Recovered = false;
+            boolean node2Recovered = false;
+            boolean node3Recovered = false;
+
+            // if node 1 was down during a transaction
+            while (node1Recovery) {
+                // check if all nodes are up in order to perform re-syncing
+                try {
+                    node1Repo.tryConnection();
+                    node2Repo.tryConnection();
+                    node3Repo.tryConnection();
+
+                    // get recent node 1 log
+                    Log recentNode1Log = node1Repo.getRecentLog();
+
+                    // get logs that are more recent than node 1's recent log (transactions that occurred without node 1)
+                    List<Log> node2Logs;
+                    List<Log> node3Logs;
+                    if (recentNode1Log == null) {
+                        node2Logs = node2Repo.getAllLogs();
+                        node3Logs = node3Repo.getAllLogs();
+                    } else {
+                        node2Logs = node2Repo.getLogs(recentNode1Log);
+                        node3Logs = node3Repo.getLogs(recentNode1Log);
+                    }
+
+                    // update node 1 db with node 2 logs
+                    for (int i = 0; i < node2Logs.size(); i++) {
+                        if (recentNode1Log == null || !recentNode1Log.getUuid().equalsIgnoreCase(node2Logs.get(i).getUuid())) {
+                            node1Recovered = true;
+                            Movie movie = node2Repo.getMovieByUUID(node2Logs.get(i).getMovieUuid());
+                            String op = node2Logs.get(i).getOp();
+                            if (op.equalsIgnoreCase("INSERT")) {
+                                node1Repo.addMovie(movie);
+                            } else if (op.equalsIgnoreCase("UPDATE")) {
+                                node1Repo.updateMovie(movie);
+                            } else {
+                                node1Repo.deleteMovie(movie);
+                            }
+                            node1Repo.addLog(node2Logs.get(i));
+                        }
+                    }
+
+                    // update node 1 db with node 3 logs
+                    for (int i = 0; i < node3Logs.size(); i++) {
+                        if (recentNode1Log == null || !recentNode1Log.getUuid().equalsIgnoreCase(node3Logs.get(i).getUuid())) {
+                            node1Recovered = true;
+                            Movie movie = node3Repo.getMovieByUUID(node3Logs.get(i).getMovieUuid());
+                            String op = node3Logs.get(i).getOp();
+                            if (op.equalsIgnoreCase("INSERT")) {
+                                node1Repo.addMovie(movie);
+                            } else if (op.equalsIgnoreCase("UPDATE")) {
+                                node1Repo.updateMovie(movie);
+                            } else {
+                                node1Repo.deleteMovie(movie);
+                            }
+                            node1Repo.addLog(node3Logs.get(i));
+                        }
+                    }
+
+                    // node 1 recovered
+                    System.out.println("resyncDB - Node 1 recovery finished...");
+                    node1Down = false;
+                    node1Recovery = false;
+                } catch (SQLException sqlException) {
+                    // at least one node is down, cannot perform re-sync
+                    node1Recovery = false;
+                } catch (Exception exception) {
+                    // error occurred during a query, retry
+                    exception.printStackTrace();
+                }
+            }
+
+            // if node 2 was down during a transaction
+            while (node2Recovery) {
+                // check if both node 1 and node 2 is up to perform re-syncing
+                try {
+                    node1Repo.tryConnection();
+                    node2Repo.tryConnection();
+
+                    // get recent node 2 log
+                    Log recentNode2Log = node2Repo.getRecentLog();
+
+                    // get logs that are more recent than node 2's recent log (transactions that occurred without node 2)
+                    List<Log> node1Logs;
+                    if (recentNode2Log != null) {
+                        node1Logs = node1Repo.getLogsForNode2(recentNode2Log);
+                    } else {
+                        node1Logs = node1Repo.getAllLogs();
+                    }
+
+                    // update node 2 db with node 1 logs
+                    for (int i = 0; i < node1Logs.size(); i++) {
+                        if (recentNode2Log == null || !recentNode2Log.getUuid().equalsIgnoreCase(node1Logs.get(i).getUuid())) {
+                            node2Recovered = true;
+                            Movie movie = node1Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid());
+                            String op = node1Logs.get(i).getOp();
+                            if (op.equalsIgnoreCase("INSERT")) {
+                                node2Repo.addMovie(movie);
+                            } else if (op.equalsIgnoreCase("UPDATE")) {
+                                node2Repo.updateMovie(movie);
+                            } else {
+                                node2Repo.deleteMovie(movie);
+                            }
+                            node2Repo.addLog(node1Logs.get(i));
+                        }
+                    }
+
+                    // node 2 recovered
+                    System.out.println("resyncDB - Node 2 recovery finished...");
+                    node2Down = false;
+                    node2Recovery = false;
+                } catch (SQLException sqlException) {
+                    node2Recovery = false;
+                } catch (Exception exception) {}
+            }
+
+            // if node 3 was down during a transaction
+            while (node3Recovery) {
+                // check if both node 1 and node 3 is up to perform re-syncing
+                try {
+                    node1Repo.tryConnection();
+                    node3Repo.tryConnection();
+
+                    // get recent node 3 log
+                    Log recentNode3Log = node3Repo.getRecentLog();
+
+                    // get logs that are more recent than node 3's recent log (transactions that occurred without node 3)
+                    List<Log> node1Logs;
+                    if (recentNode3Log != null) {
+                        node1Logs = node1Repo.getLogsForNode3(recentNode3Log);
+                    } else {
+                        node1Logs = node1Repo.getAllLogs();
+                    }
+
+                    // update node 3 db with node 1 logs
+                    for (int i = 0; i < node1Logs.size(); i++) {
+                        if (recentNode3Log == null || !recentNode3Log.getUuid().equalsIgnoreCase(node1Logs.get(i).getUuid())) {
+                            node3Recovered = true;
+                            Movie movie = node1Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid());
+                            String op = node1Logs.get(i).getOp();
+                            if (op.equalsIgnoreCase("INSERT")) {
+                                node3Repo.addMovie(movie);
+                            } else if (op.equalsIgnoreCase("UPDATE")) {
+                                node3Repo.updateMovie(movie);
+                            } else {
+                                node3Repo.deleteMovie(movie);
+                            }
+                            node3Repo.addLog(node1Logs.get(i));
+                        }
+                    }
+
+                    // node 3 recovered
+                    System.out.println("resyncDB - Node 3 recovery finished...");
+                    node3Down = false;
+                    node3Recovery = false;
+                } catch (SQLException sqlException) {
+                    node3Recovery = false;
+                } catch (Exception exception) {}
+            }
+
+            // check if all nodes are in OK state and do not need recovery anymore
+            try {
+                // all nodes must be available
+                node1Repo.tryConnection();
+                node2Repo.tryConnection();
+                node3Repo.tryConnection();
+
+                if (node1Repo.getNode2LogsCount() == node2Repo.getLogsCount() && node1Repo.getNode3LogsCount() == node3Repo.getLogsCount()) {
+                    node1Recovered = true;
+                    node2Recovered = true;
+                    node3Recovered = true;
+                }
+            } catch (Exception exception) {}
+
+            // if all nodes have recovered successfully, disable re-sync and delete logs from each node to have more space
+            while (node1Recovered && node2Recovered && node3Recovered && maintenance) {
+                // try deleting logs on each node
+                try {
+                    // try connection first to each node
+                    node1Repo.tryConnection();
+                    node2Repo.tryConnection();
+                    node3Repo.tryConnection();
+
+                    // delete logs on each node
+                    node1Repo.deleteLogs();
+                    node2Repo.deleteLogs();
+                    node3Repo.deleteLogs();
+
+                    // logs deleted successfully, release maintenance and disable re-sync
+                    maintenance = false;
+                    resyncEnabled = false;
+
+                    System.out.println("resyncDB - All logs deleted from each node...");
+                } catch (SQLException sqlException) {
+                    // at least one node is down, cannot perform deletion of logs
+                    maintenance = false;
+                } catch (Exception exception) {
+                    // error occurred during query, repeat process
+                }
+            }
+
+            // if at least one node is up, release maintenance and disable re-sync for now
+            if (!node1Down || !node2Down || !node3Down) {
+                maintenance = false;
+                resyncEnabled = false;
+            }
+        }
     }
 
 }

@@ -158,7 +158,7 @@ public class DBConfig {
 
     @Bean(name="resyncEnabled")
     public Boolean resyncEnabled() {
-        return false;
+        return true;
     }
 
     @Bean(name="node1Down")

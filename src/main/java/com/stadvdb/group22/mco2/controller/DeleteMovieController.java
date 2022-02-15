@@ -21,8 +21,12 @@ public class DeleteMovieController {
         Movie movie = new Movie ();
         movie.setUuid(movieUUID);
         movie.setYear(movieYear);
-        movieService.deleteMovie(movie);
-
-        return new RedirectView ("/");
+        try {
+            movieService.deleteMovie(movie);
+            return new RedirectView ("/");
+        } catch (Exception e) {
+            // TODO: handle exception for front-end
+            return null;
+        }
     }
 }

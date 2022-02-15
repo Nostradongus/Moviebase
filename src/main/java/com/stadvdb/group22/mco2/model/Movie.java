@@ -77,7 +77,7 @@ public class Movie {
     }
 
     public void setActor2(String actor2) {
-        this.actor2 = actor2;
+        this.actor2 = actor2 != null ? actor2 : "";
     }
 
     @Override
