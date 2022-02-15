@@ -1,6 +1,7 @@
 package com.stadvdb.group22.mco2.controller;
 
 import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
+import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
