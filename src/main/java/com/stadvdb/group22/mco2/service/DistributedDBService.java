@@ -130,12 +130,12 @@ public class DistributedDBService {
 
                 // TODO: [CONCURRENCY CONTROL CASE #2 - NON-REPEATABLE READ]
                 // While sleeping, another user (thread) will update the same movie data - updating the genre
-                // System.out.println("getMovieByUUID - Before sleeping, genre: " + movie.getGenre());
-                // System.out.println("getMovieByUUID - Sleeping...");
-                // TimeUnit.SECONDS.sleep(10);
-                // System.out.println("getMovieByUUID - Done sleeping!");
-                // movie = node2Repo.getMovieByUUID(uuid);
-                // System.out.println("getMovieByUUID - After sleeping, genre: " + movie.getGenre());
+//                 System.out.println("getMovieByUUID - Before sleeping, genre: " + movie.getGenre());
+//                 System.out.println("getMovieByUUID - Sleeping...");
+//                 TimeUnit.SECONDS.sleep(10);
+//                 System.out.println("getMovieByUUID - Done sleeping!");
+//                 movie = node2Repo.getMovieByUUID(uuid);
+//                 System.out.println("getMovieByUUID - After sleeping, genre: " + movie.getGenre());
 
                 node2TxManager.commit(status);
                 return movie;
@@ -359,7 +359,7 @@ public class DistributedDBService {
             throw new Exception ();
         } catch (DataAccessException e) {
             // error in reading data, invalid search parameter
-            node2TxManager.rollback(status);
+            node1TxManager.rollback(status);
             System.out.println("searchMoviesByPage - Error occurred, invalid search parameter...");
             throw new TransactionErrorException();
         }
@@ -681,12 +681,12 @@ public class DistributedDBService {
 
             // TODO: [CONCURRENCY CONTROL CASE #2 - PHANTOM READ]
             // While sleeping, another user (thread) will insert new movie data - adding a new movie with year 1893
-            // System.out.println("getMoviesPerYearByPage - Before sleeping, 1893 count: " + reports.getContent().get(0).getCount());
-            // System.out.println("getMoviesPerYearByPage - Sleeping...");
-            // TimeUnit.SECONDS.sleep(10); // do some work
-            // System.out.println("getMoviesPerYearByPage - Done sleeping!");
-            // reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page,size));
-            // System.out.println("getMoviesPerYearByPage - After sleeping, 1893 count: " + reports.getContent().get(0).getCount());
+             System.out.println("getMoviesPerYearByPage - Before sleeping, 1893 count: " + reports.getContent().get(0).getCount());
+             System.out.println("getMoviesPerYearByPage - Sleeping...");
+             TimeUnit.SECONDS.sleep(10); // do some work
+             System.out.println("getMoviesPerYearByPage - Done sleeping!");
+             reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page,size));
+             System.out.println("getMoviesPerYearByPage - After sleeping, 1893 count: " + reports.getContent().get(0).getCount());
 
             node1TxManager.commit(status);
             return reports;
@@ -1001,6 +1001,12 @@ public class DistributedDBService {
             System.out.println("updateMovie - Updating movie data to node 1...");
             node1Repo.updateMovie(movie);
             node1Status = OK; // transaction is ready for commit
+            System.out.println("updateMovie - Movie data in node 1 updated...");
+
+            // TODO: [CONCURRENCY CONTROL CASE #3 - UPDATE]
+//            System.out.println("updateMovie - Sleeping...");
+//            TimeUnit.SECONDS.sleep(10); // do some work
+//            System.out.println("updateMovie - Done sleeping!");
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("updateMovie - Node 1 is currently down...");
@@ -1029,9 +1035,11 @@ public class DistributedDBService {
 
                 // TODO: [CONCURRENCY CONTROL CASE #2 - DIRTY READ]
                 // Sleep for 10 seconds, while sleeping another user (thread) will read the same movie data
-                System.out.println("updateMovie - Sleeping...");
-                TimeUnit.SECONDS.sleep(10); // do some work
-                System.out.println("updateMovie - Done sleeping!");
+//                System.out.println("updateMovie - Sleeping...");
+//                TimeUnit.SECONDS.sleep(10); // do some work
+//                System.out.println("updateMovie - Done sleeping!");
+
+                System.out.println("updateMovie - Movie data in node 2 updated...");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("updateMovie - Node 2 is currently down...");
@@ -1054,6 +1062,7 @@ public class DistributedDBService {
                 System.out.println("updateMovie - Updating movie data to node 3...");
                 node3Repo.updateMovie(movie);
                 node3Status = OK;
+                System.out.println("updateMovie - Movie data in node 3 updated...");
             } catch (SQLException sqlException) {
                 // node 3 is currently down
                 System.out.println("updateMovie - Node 3 is currently down...");
@@ -1223,6 +1232,12 @@ public class DistributedDBService {
             System.out.println("deleteMovie - Deleting movie data to node 1...");
             node1Repo.deleteMovie(movie);
             node1Status = OK; // transaction is ready for commit
+            System.out.println("deleteMovie - Movie data in node 1 deleted...");
+
+            // TODO: [CONCURRENCY CONTROL CASE #3 - DELETE]
+//            System.out.println("deleteMovie - Sleeping...");
+//            TimeUnit.SECONDS.sleep(10); // do some work
+//            System.out.println("deleteMovie - Done sleeping!");
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("deleteMovie - Node 1 is currently down...");
@@ -1248,6 +1263,7 @@ public class DistributedDBService {
                 System.out.println("deleteMovie - Deleting movie data to node 2...");
                 node2Repo.deleteMovie(movie);
                 node2Status = OK;
+                System.out.println("deleteMovie - Movie data in node 2 deleted...");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("deleteMovie - Node 2 is currently down...");
@@ -1270,6 +1286,7 @@ public class DistributedDBService {
                 System.out.println("deleteMovie - Deleting movie data to node 3...");
                 node3Repo.deleteMovie(movie);
                 node3Status = OK;
+                System.out.println("deleteMovie - Movie data in node 3 deleted...");
             } catch (SQLException sqlException) {
                 // node 3 is currently down
                 System.out.println("deleteMovie - Node 3 is currently down...");
