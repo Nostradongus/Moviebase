@@ -1418,6 +1418,7 @@ public class DistributedDBService {
                 // check if nodes are in consistent state (equal number of logs between nodes)
                 if (node1Repo.getNode2LogsCount() == node2Repo.getLogsCount() && node1Repo.getNode3LogsCount() == node3Repo.getLogsCount()) {
                     // disable re-sync as not needed
+                    System.out.println("resyncDB - Nodes are in consistent state");
                     resyncEnabled = false;
                 }
             } catch (Exception exception) {
@@ -1607,7 +1608,7 @@ public class DistributedDBService {
                 } catch (Exception exception) {}
             }
 
-            // check if all nodes are in OK state and do not need recovery anymore
+            // check if all nodes are in consistent state and do not need recovery anymore
             try {
                 // all nodes must be available
                 node1Repo.tryConnection();
@@ -1615,6 +1616,7 @@ public class DistributedDBService {
                 node3Repo.tryConnection();
 
                 if (node1Repo.getNode2LogsCount() == node2Repo.getLogsCount() && node1Repo.getNode3LogsCount() == node3Repo.getLogsCount()) {
+                    System.out.println("resyncDB - Nodes are in consistent state");
                     node1Recovered = true;
                     node2Recovered = true;
                     node3Recovered = true;
