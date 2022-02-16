@@ -681,12 +681,12 @@ public class DistributedDBService {
 
             // TODO: [CONCURRENCY CONTROL CASE #2 - PHANTOM READ]
             // While sleeping, another user (thread) will insert new movie data - adding a new movie with year 1893
-             System.out.println("getMoviesPerYearByPage - Before sleeping, 1893 count: " + reports.getContent().get(0).getCount());
-             System.out.println("getMoviesPerYearByPage - Sleeping...");
-             TimeUnit.SECONDS.sleep(10); // do some work
-             System.out.println("getMoviesPerYearByPage - Done sleeping!");
-             reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page,size));
-             System.out.println("getMoviesPerYearByPage - After sleeping, 1893 count: " + reports.getContent().get(0).getCount());
+//             System.out.println("getMoviesPerYearByPage - Before sleeping, 1893 count: " + reports.getContent().get(0).getCount());
+//             System.out.println("getMoviesPerYearByPage - Sleeping...");
+//             TimeUnit.SECONDS.sleep(10); // do some work
+//             System.out.println("getMoviesPerYearByPage - Done sleeping!");
+//             reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page,size));
+//             System.out.println("getMoviesPerYearByPage - After sleeping, 1893 count: " + reports.getContent().get(0).getCount());
 
             node1TxManager.commit(status);
             return reports;
