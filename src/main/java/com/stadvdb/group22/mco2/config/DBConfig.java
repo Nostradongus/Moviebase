@@ -37,7 +37,7 @@ public class DBConfig {
     public static final int LOGIN_TIME_OUT = 5;
 
     // CHANGE TRANSACTION ISOLATION LEVEL HERE
-    public static final int ISOLATION_LEVEL = TransactionDefinition.ISOLATION_READ_COMMITTED;
+    public static final int ISOLATION_LEVEL = TransactionDefinition.ISOLATION_REPEATABLE_READ;
 
     // CHANGE TRANSACTION TIMEOUT VALUE HERE
     public static final int T_TIME_OUT = 30;
