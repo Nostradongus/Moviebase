@@ -6,10 +6,13 @@ import com.atomikos.jdbc.AtomikosDataSourceBean;
 import com.mysql.cj.jdbc.MysqlXADataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,6 +22,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionManager;
 import org.springframework.transaction.jta.JtaTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.context.WebApplicationContext;
 
 import javax.sql.DataSource;
 import javax.transaction.UserTransaction;
@@ -33,7 +37,7 @@ public class DBConfig {
     public static final int LOGIN_TIME_OUT = 5;
 
     // CHANGE TRANSACTION ISOLATION LEVEL HERE
-    public static final int ISOLATION_LEVEL = TransactionDefinition.ISOLATION_READ_UNCOMMITTED;
+    public static final int ISOLATION_LEVEL = TransactionDefinition.ISOLATION_READ_COMMITTED;
 
     // CHANGE TRANSACTION TIMEOUT VALUE HERE
     public static final int T_TIME_OUT = 30;
@@ -154,11 +158,6 @@ public class DBConfig {
     public ReentrantLock lock() {
         ReentrantLock lock = new ReentrantLock(true);
         return lock;
-    }
-
-    @Bean(name="initialCheck")
-    public Boolean initialCheck() {
-        return true;
     }
 
     @Bean(name="resyncEnabled")

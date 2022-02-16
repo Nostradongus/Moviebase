@@ -21,6 +21,7 @@ import org.springframework.transaction.*;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import java.sql.SQLException;
+import java.sql.Savepoint;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,11 +60,6 @@ public class DistributedDBService {
     private final int OK = 1;
     private final int UNAVAILABLE = 2;
     private final int ERROR = 3;
-
-    // for initial check if need for re-sync (always done at start of server)
-    @Autowired
-    @Qualifier("initialCheck")
-    private Boolean initialCheck;
 
     // distributed database re-sync switch
     @Autowired
@@ -359,7 +355,8 @@ public class DistributedDBService {
             throw new Exception ();
         } catch (DataAccessException e) {
             // error in reading data, invalid search parameter
-            node2TxManager.rollback(status);
+            node1TxManager.rollback(status);
+            e.printStackTrace();
             System.out.println("searchMoviesByPage - Error occurred, invalid search parameter...");
             throw new TransactionErrorException();
         }
@@ -1029,9 +1026,9 @@ public class DistributedDBService {
 
                 // TODO: [CONCURRENCY CONTROL CASE #2 - DIRTY READ]
                 // Sleep for 10 seconds, while sleeping another user (thread) will read the same movie data
-                System.out.println("updateMovie - Sleeping...");
-                TimeUnit.SECONDS.sleep(10); // do some work
-                System.out.println("updateMovie - Done sleeping!");
+//                System.out.println("updateMovie - Sleeping...");
+//                TimeUnit.SECONDS.sleep(10); // do some work
+//                System.out.println("updateMovie - Done sleeping!");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("updateMovie - Node 2 is currently down...");
@@ -1410,23 +1407,26 @@ public class DistributedDBService {
     // occurred, specifically unavailability of nodes
     @Scheduled(initialDelay = 1000, fixedDelay = 20000)
     private void resyncDB() {
-        // initial check (always done at start of server)
-        if (initialCheck) {
+        // initial check
+        if (resyncEnabled) {
             try {
                 // check if all nodes are online
                 node1Repo.tryConnection();
                 node2Repo.tryConnection();
                 node3Repo.tryConnection();
 
+                // check if nodes are in consistent state (equal number of logs between nodes)
                 if (node1Repo.getNode2LogsCount() == node2Repo.getLogsCount() && node1Repo.getNode3LogsCount() == node3Repo.getLogsCount()) {
                     // disable re-sync as not needed
                     resyncEnabled = false;
                 }
-            } catch (Exception exception) {}
-            initialCheck = false;
+            } catch (Exception exception) {
+                // at least one node is down, so cannot perform re-sync
+                resyncEnabled = false;
+            }
         }
 
-        // if there is a need for recovery
+        // if recovery is needed
         if (resyncEnabled) {
             // set maintenance so that user queries will not be accepted during the process (similar to database being down)
             maintenance = true;
@@ -1448,24 +1448,27 @@ public class DistributedDBService {
                     node2Repo.tryConnection();
                     node3Repo.tryConnection();
 
-                    // get recent node 1 log
-                    Log recentNode1Log = node1Repo.getRecentLog();
+                    // get recent node 1 logs for node 2 and 3
+                    Log recentNode2Log = node1Repo.getRecentNode2Log();
+                    Log recentNode3Log = node1Repo.getRecentNode3Log();
 
                     // get logs that are more recent than node 1's recent log (transactions that occurred without node 1)
                     List<Log> node2Logs;
                     List<Log> node3Logs;
-                    if (recentNode1Log == null) {
+                    if (recentNode2Log == null) {
                         node2Logs = node2Repo.getAllLogs();
+                    } else {
+                        node2Logs = node2Repo.getLogs(recentNode2Log);
+                    }
+                    if (recentNode3Log == null) {
                         node3Logs = node3Repo.getAllLogs();
                     } else {
-                        node2Logs = node2Repo.getLogs(recentNode1Log);
-                        node3Logs = node3Repo.getLogs(recentNode1Log);
+                        node3Logs = node3Repo.getLogs(recentNode3Log);
                     }
 
                     // update node 1 db with node 2 logs
                     for (int i = 0; i < node2Logs.size(); i++) {
-                        if (recentNode1Log == null || !recentNode1Log.getUuid().equalsIgnoreCase(node2Logs.get(i).getUuid())) {
-                            node1Recovered = true;
+                        if (recentNode2Log == null || !recentNode2Log.getUuid().equalsIgnoreCase(node2Logs.get(i).getUuid())) {
                             Movie movie = node2Repo.getMovieByUUID(node2Logs.get(i).getMovieUuid());
                             if (movie != null) {
                                 String op = node2Logs.get(i).getOp();
@@ -1483,8 +1486,7 @@ public class DistributedDBService {
 
                     // update node 1 db with node 3 logs
                     for (int i = 0; i < node3Logs.size(); i++) {
-                        if (recentNode1Log == null || !recentNode1Log.getUuid().equalsIgnoreCase(node3Logs.get(i).getUuid())) {
-                            node1Recovered = true;
+                        if (recentNode3Log == null || !recentNode3Log.getUuid().equalsIgnoreCase(node3Logs.get(i).getUuid())) {
                             Movie movie = node3Repo.getMovieByUUID(node3Logs.get(i).getMovieUuid());
                             if (movie != null) {
                                 String op = node3Logs.get(i).getOp();
@@ -1535,7 +1537,6 @@ public class DistributedDBService {
                     for (int i = 0; i < node1Logs.size(); i++) {
                         if (recentNode2Log == null || !recentNode2Log.getUuid().equalsIgnoreCase(node1Logs.get(i).getUuid()) &&
                             node1Logs.get(i).getMovieYear() < 1980) {
-                            node2Recovered = true;
                             Movie movie = node1Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid());
                             if (movie != null) {
                                 String op = node1Logs.get(i).getOp();
@@ -1582,7 +1583,6 @@ public class DistributedDBService {
                     for (int i = 0; i < node1Logs.size(); i++) {
                         if (recentNode3Log == null || !recentNode3Log.getUuid().equalsIgnoreCase(node1Logs.get(i).getUuid()) &&
                             node1Logs.get(i).getMovieYear() >= 1980) {
-                            node3Recovered = true;
                             Movie movie = node1Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid());
                             if (movie != null) {
                                 String op = node1Logs.get(i).getOp();

@@ -153,6 +153,16 @@ public class Node1Repository {
         return logs.size() > 0 ? logs.get(0) : null;
     }
 
+    public Log getRecentNode2Log() {
+        List<Log> logs = node1.query("SELECT * FROM t_log WHERE movie_yr < 1980 ORDER BY ts DESC LIMIT 1", new LogRowMapper());
+        return logs.size() > 0 ? logs.get(0) : null;
+    }
+
+    public Log getRecentNode3Log() {
+        List<Log> logs = node1.query("SELECT * FROM t_log WHERE movie_yr >= 1980 ORDER BY ts DESC LIMIT 1", new LogRowMapper());
+        return logs.size() > 0 ? logs.get(0) : null;
+    }
+
     public List<Log> getAllLogs() {
         return node1.query("SELECT * FROM t_log", new LogRowMapper());
     }
