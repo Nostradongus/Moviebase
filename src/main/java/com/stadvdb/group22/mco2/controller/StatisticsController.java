@@ -51,7 +51,7 @@ public class StatisticsController {
             Page<Report> reports = distributedDBService.getMoviesPerGenreByPage(pageNum - 1, size);
             int totalPages = reports.getTotalPages();
 
-            if (pageNum >= 0 && pageNum <= totalPages) {
+            if (pageNum > 0 && pageNum <= totalPages) {
                 model.addAttribute("page", reports);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("pageTitle", "No. of Movies Per Genre:");
@@ -77,7 +77,7 @@ public class StatisticsController {
             Page<Report> reports = distributedDBService.getMoviesPerDirectorByPage(pageNum - 1, size);
             int totalPages = reports.getTotalPages();
 
-            if (pageNum >= 0 && pageNum <= totalPages) {
+            if (pageNum > 0 && pageNum <= totalPages) {
                 model.addAttribute("page", reports);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("pageTitle", "No. of Movies Per Director:");
@@ -103,7 +103,7 @@ public class StatisticsController {
             Page<Report> reports = distributedDBService.getMoviesPerActorByPage(pageNum - 1, size);
             int totalPages = reports.getTotalPages();
 
-            if (pageNum >= 0 && pageNum <= totalPages) {
+            if (pageNum > 0 && pageNum <= totalPages) {
                 model.addAttribute("page", reports);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("pageTitle", "No. of Movies Per Actor:");
@@ -129,7 +129,7 @@ public class StatisticsController {
             Page<Report> reports = distributedDBService.getMoviesPerYearByPage(pageNum - 1, size);
             int totalPages = reports.getTotalPages();
 
-            if (pageNum >= 0 && pageNum <= totalPages) {
+            if (pageNum > 0 && pageNum <= totalPages) {
                 model.addAttribute("page", reports);
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("pageTitle", "No. of Movies Per year:");
