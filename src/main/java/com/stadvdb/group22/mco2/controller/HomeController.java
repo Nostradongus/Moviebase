@@ -1,6 +1,7 @@
 package com.stadvdb.group22.mco2.controller;
 
 import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
+import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
@@ -42,13 +43,19 @@ public class HomeController {
                 model.addAttribute("pageNum", pageNum);
                 model.addAttribute("movie", new Movie());
                 return "index";
-            // if invalid page
+                // if invalid page
             } else {
                 model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_PAGE_NOT_FOUND);
                 model.addAttribute("mainText", ErrorMessageConfig.PAGE_NOT_FOUND);
                 model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
                 return "err_page";
             }
+        // if error occurred during query
+        } catch (TransactionErrorException e) {
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
+            model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
         // if database is down
         } catch (Exception e) {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);

@@ -6,6 +6,10 @@ import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.data.domain.Page;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -35,36 +39,23 @@ public class SearchController {
 
     @RequestMapping(value = "/search", method = RequestMethod.POST)
     public RedirectView redirectSearch (@ModelAttribute Movie movie) {
-        this.yearQuery = movie.getYear() == null ? "" : movie.getYear().toString();
-        this.titleQuery = movie.getTitle() == null ? "" : movie.getTitle();
-        this.genreQuery = movie.getGenre() == null ? "" : movie.getGenre();
-        this.actorQuery = movie.getActor1() == null ? "" : movie.getActor1();
-        this.directorQuery = movie.getDirector() == null ? "" : movie.getDirector();
+        this.yearQuery = movie.getYear() == null ? null : movie.getYear().toString();
+        this.titleQuery = movie.getTitle().equalsIgnoreCase("") ? null : "'" + movie.getTitle() + "'";
+        this.genreQuery = movie.getGenre().equalsIgnoreCase("") ? null : "'" + movie.getGenre() + "'";
+        this.actorQuery = movie.getActor1().equalsIgnoreCase("") ? null : "'" + movie.getActor1() + "'";
+        this.directorQuery = movie.getDirector().equalsIgnoreCase("") ? null : "'" + movie.getDirector() + "'";
         return new RedirectView("/search/p/1");
     }
 
     @RequestMapping(value = "/search/p/{pageNum}", method = RequestMethod.GET)
     public String searchMovies(@PathVariable int pageNum, @RequestParam(defaultValue = "5") int size, Model model) {
-
-        // trim whitespaces and reformat inputs for SQL query
-        if (this.yearQuery != null)
-            this.yearQuery = !yearQuery.equalsIgnoreCase("") ? yearQuery.trim() : null;
-        if (this.titleQuery != null)
-            this.titleQuery = !titleQuery.equalsIgnoreCase("") ? "'" + titleQuery.trim() + "'" : null;
-        if (this.genreQuery != null)
-            this.genreQuery = !genreQuery.equalsIgnoreCase("") ? "'" + genreQuery.trim() + "'" : null;
-        if (this.actorQuery != null)
-            this.actorQuery = !actorQuery.equalsIgnoreCase("") ? "'" + actorQuery.trim() + "'" : null;
-        if (this.directorQuery != null)
-            this.directorQuery = !directorQuery.equalsIgnoreCase("") ? "'" + directorQuery.trim() + "'" : null;
-
         // create movie object
         Movie movieToInsert = new Movie();
         movieToInsert.setYear(yearQuery != null ? Integer.parseInt(yearQuery) : null);
-        movieToInsert.setTitle(this.titleQuery);
-        movieToInsert.setGenre(this.genreQuery);
-        movieToInsert.setActor1(this.actorQuery);
-        movieToInsert.setDirector(this.directorQuery);
+        movieToInsert.setTitle(titleQuery);
+        movieToInsert.setGenre(genreQuery);
+        movieToInsert.setActor1(actorQuery);
+        movieToInsert.setDirector(directorQuery);
 
         try {
             Page<Movie> movies = distributedDBService.searchMoviesByPage(movieToInsert, pageNum - 1, size);

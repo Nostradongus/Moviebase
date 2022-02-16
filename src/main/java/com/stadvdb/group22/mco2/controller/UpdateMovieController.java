@@ -42,6 +42,13 @@ public class UpdateMovieController {
                 model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
                 return "err_page";
             }
+        // if error occurred during query
+        } catch (TransactionErrorException e) {
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
+            model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
+        // if database is down
         } catch (Exception e) {
             this.movieUUID = "";
             this.movieYear = -1;

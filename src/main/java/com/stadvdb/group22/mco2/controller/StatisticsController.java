@@ -1,6 +1,7 @@
 package com.stadvdb.group22.mco2.controller;
 
 import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
+import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.model.Report;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
@@ -63,6 +64,13 @@ public class StatisticsController {
                 model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
                 return "err_page";
             }
+        // if error occurred during query
+        } catch (TransactionErrorException e) {
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
+            model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
+        // if database is down
         } catch (Exception e) {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
             model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
@@ -89,6 +97,12 @@ public class StatisticsController {
                 model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
                 return "err_page";
             }
+        } catch (TransactionErrorException e) {
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
+            model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
+        // if database is down
         } catch (Exception e) {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
             model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
@@ -115,6 +129,12 @@ public class StatisticsController {
                 model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
                 return "err_page";
             }
+        } catch (TransactionErrorException e) {
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
+            model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
+        // if database is down
         } catch (Exception e) {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
             model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
@@ -141,6 +161,12 @@ public class StatisticsController {
                 model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
                 return "err_page";
             }
+        } catch (TransactionErrorException e) {
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
+            model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "err_page";
+        // if database is down
         } catch (Exception e) {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
             model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);

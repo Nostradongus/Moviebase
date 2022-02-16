@@ -49,7 +49,7 @@ public class AddMovieController {
 
         try {
             distributedDBService.addMovie(movie);
-            return "redirect: add_movie";
+            return "redirect:add_movie";
         } catch (TransactionErrorException e) {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
             model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
