@@ -122,19 +122,20 @@ public class DistributedDBService {
                     throw new SQLException ();
                 }
                 node2Repo.tryConnection();
-                System.out.println("getMovieByUUID - Reading and retrieving data from node 2...");
+                System.out.println("getMovieByUUID - Reading and retrieving data of movie with ID " + uuid + " and year " + year + " from node 2...");
                 movie = node2Repo.getMovieByUUID(uuid);
 
                 // TODO: [CONCURRENCY CONTROL CASE #2 - NON-REPEATABLE READ]
                 // While sleeping, another user (thread) will update the same movie data - updating the genre
-//                 System.out.println("getMovieByUUID - Before sleeping, genre: " + movie.getGenre());
+//                 System.out.println("getMovieByUUID - Before sleeping, movie data: " + movie.getTitle() + " (" + movie.getYear() + ") with genre "  + movie.getGenre());
 //                 System.out.println("getMovieByUUID - Sleeping...");
 //                 TimeUnit.SECONDS.sleep(10);
 //                 System.out.println("getMovieByUUID - Done sleeping!");
 //                 movie = node2Repo.getMovieByUUID(uuid);
-//                 System.out.println("getMovieByUUID - After sleeping, genre: " + movie.getGenre());
+//                System.out.println("getMovieByUUID - After sleeping, movie data: " + movie.getTitle() + " (" + movie.getYear() + ") with genre "  + movie.getGenre());
 
                 node2TxManager.commit(status);
+                System.out.println("getMovieByUUID - Retrieved data from node 2 successfully...");
                 return movie;
             } catch (SQLException e) {
                 // node 2 is currently down
@@ -154,9 +155,10 @@ public class DistributedDBService {
                     throw new SQLException ();
                 }
                 node3Repo.tryConnection();
-                System.out.println("getMovieByUUID - Reading and retrieving data from node 3...");
+                System.out.println("getMovieByUUID - Reading and retrieving data of movie with ID " + uuid + " and year " + year + " from node 3...");
                 movie = node3Repo.getMovieByUUID(uuid);
                 node3TxManager.commit(status);
+                System.out.println("getMovieByUUID - Retrieved data from node 3 successfully...");
                 return movie;
             } catch (SQLException e) {
                 // node 3 is currently down
@@ -177,9 +179,10 @@ public class DistributedDBService {
                 throw new SQLException();
             }
             node1Repo.tryConnection();
-            System.out.println("getMovieByUUID - Reading and retrieving data from node 1...");
+            System.out.println("getMovieByUUID - Reading and retrieving data of movie with ID " + uuid + " and year " + year + " from node 1...");
             movie = node1Repo.getMovieByUUID(uuid);
             node1TxManager.commit(status);
+            System.out.println("getMovieByUUID - Retrieved data from node 1 successfully...");
             if (node2Down || node3Down) { // if node 2 or 3 down, enable db re-sync
                 resyncEnabled = true;
             }
@@ -221,6 +224,7 @@ public class DistributedDBService {
             System.out.println("getMoviesByPage - Reading and retrieving data from node 1...");
             movies = node1Repo.getMoviesByPage(PageRequest.of(page, size));
             node1TxManager.commit(status);
+            System.out.println("getMoviesByPage - Retrieved data from node 1 successfully...");
             return movies;
         } catch (SQLException e) {
             // node 1 is currently down
@@ -260,9 +264,12 @@ public class DistributedDBService {
             }
             node3TxManager.commit(node3Status);
             node2TxManager.commit(node2Status);
+            System.out.println("getMoviesByPage - Retrieved data from node 2 successfully...");
+            System.out.println("getMoviesByPage - Retrieved data from node 3 successfully...");
             if (node1Down) {
                 resyncEnabled = true;
             }
+            System.out.println("getMoviesByPage - Merged data from nodes 2 & 3 successfully...");
             return new PageImpl<>(moviesPage, PageRequest.of(page, size), total);
         } catch (SQLException e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
@@ -279,13 +286,13 @@ public class DistributedDBService {
                 node3Down = true;
             }
             resyncEnabled = true;
-            System.out.println("getMoviesPerGenreByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
+            System.out.println("getMoviesByPage - Node 2 or 3 is currently down. Cannot retrieve data, exception thrown...");
             throw new Exception ();
         } catch (DataAccessException e) {
             // error occurred during read query in node 2 or 3, cannot retrieve data
             node3TxManager.rollback(node3Status);
             node2TxManager.rollback(node2Status);
-            System.out.println("getMoviesPerGenreByPage - Unexpected error occurred in node 2 or 3 during query, exception thrown...");
+            System.out.println("getMoviesByPage - Unexpected error occurred in node 2 or 3 during query, exception thrown...");
             throw new TransactionErrorException ();
         }
     }
@@ -316,6 +323,7 @@ public class DistributedDBService {
                     System.out.println("searchMoviesByPage - Reading and retrieving data from node 2...");
                     movies = node2Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
                     node2TxManager.commit(status);
+                    System.out.println("searchMoviesByPage - Retrieved data from node 2 successfully...");
                     return movies;
                 } catch (SQLException e) {
                     // node 2 is currently down
@@ -338,6 +346,7 @@ public class DistributedDBService {
                     System.out.println("searchMoviesByPage - Reading and retrieving data from node 3...");
                     movies = node3Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
                     node3TxManager.commit(status);
+                    System.out.println("searchMoviesByPage - Retrieved data from node 3 successfully...");
                     return movies;
                 } catch (SQLException e) {
                     // node 3 is currently down
@@ -362,6 +371,7 @@ public class DistributedDBService {
             System.out.println("searchMoviesByPage - Reading and retrieving data from node 1...");
             movies = node1Repo.searchMoviesByPage(movie, PageRequest.of(page, size));
             node1TxManager.commit(status);
+            System.out.println("searchMoviesByPage - Retrieved data from node 1 successfully...");
             if (node2Down || node3Down) {
                 resyncEnabled = true;
             }
@@ -404,6 +414,7 @@ public class DistributedDBService {
             System.out.println("getMoviesPerGenreByPage - Reading and retrieving data from node 1...");
             reports = node1Repo.getMoviesPerGenreByPage(PageRequest.of(page, size));
             node1TxManager.commit(status);
+            System.out.println("getMoviesPerGenreByPage - Retrieved data from node 1 successfully...");
             return reports;
         } catch (SQLException e) {
             // node 1 is currently down
@@ -457,9 +468,12 @@ public class DistributedDBService {
             }
             node3TxManager.commit(node3Status);
             node2TxManager.commit(node2Status);
+            System.out.println("getMoviesPerGenreByPage - Retrieved data from node 2 successfully...");
+            System.out.println("getMoviesPerGenreByPage - Retrieved data from node 3 successfully...");
             if (node1Down) {
                 resyncEnabled = true;
             }
+            System.out.println("getMoviesPerGenreByPage - Data from nodes 2 & 3 merged successfully...");
             return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
         } catch (SQLException e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
@@ -508,6 +522,7 @@ public class DistributedDBService {
             System.out.println("getMoviesPerDirectorByPage - Reading and retrieving data from node 1...");
             reports = node1Repo.getMoviesPerDirectorByPage(PageRequest.of(page, size));
             node1TxManager.commit(status);
+            System.out.println("getMoviesPerDirectorByPage - Retrieved data from node 1 successfully...");
             return reports;
         } catch (SQLException e) {
             // node 1 is currently down
@@ -561,9 +576,12 @@ public class DistributedDBService {
             }
             node3TxManager.commit(node3Status);
             node2TxManager.commit(node2Status);
+            System.out.println("getMoviesPerDirectorByPage - Retrieved data from node 2 successfully...");
+            System.out.println("getMoviesPerDirectorByPage - Retrieved data from node 3 successfully...");
             if (node1Down) {
                 resyncEnabled = true;
             }
+            System.out.println("getMoviesPerDirectorByPage - Merged data from nodes 2 & 3 successfully...");
             return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
         } catch (SQLException e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
@@ -612,6 +630,7 @@ public class DistributedDBService {
             System.out.println("getMoviesPerActorByPage - Reading and retrieving data from node 1...");
             reports = node1Repo.getMoviesPerActorByPage(PageRequest.of(page, size));
             node1TxManager.commit(status);
+            System.out.println("getMoviesPerActorByPage - Retrieved data from node 1 successfully...");
             return reports;
         } catch (SQLException e) {
             // node 1 is currently down
@@ -665,9 +684,12 @@ public class DistributedDBService {
             }
             node3TxManager.commit(node3Status);
             node2TxManager.commit(node2Status);
+            System.out.println("getMoviesPerActorByPage - Retrieved data from node 2 successfully...");
+            System.out.println("getMoviesPerActorByPage - Retrieved data from node 3 successfully...");
             if (node1Down) {
                 resyncEnabled = true;
             }
+            System.out.println("getMoviesPerActorByPage - Data from nodes 2 & 3 merged successfully...");
             return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
         } catch (SQLException e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
@@ -726,6 +748,7 @@ public class DistributedDBService {
 //             System.out.println("getMoviesPerYearByPage - After sleeping, 1893 count: " + reports.getContent().get(0).getCount());
 
             node1TxManager.commit(status);
+            System.out.println("getMoviesPerYearByPage - Retrieved data from node 1 successfully...");
             return reports;
         } catch (SQLException e) {
             // node 1 is currently down
@@ -764,9 +787,12 @@ public class DistributedDBService {
             }
             node3TxManager.commit(node3Status);
             node2TxManager.commit(node2Status);
+            System.out.println("getMoviesPerYearByPage - Retrieved data from node 2 successfully...");
+            System.out.println("getMoviesPerYearByPage - Retrieved data from node 3 successfully...");
             if (node1Down) {
                 resyncEnabled = true;
             }
+            System.out.println("getMoviesPerYearByPage - Merged data from nodes 2 & 3 successfully...");
             return new PageImpl<>(reportsPage, PageRequest.of(page, size), total);
         } catch (SQLException e) {
             // node 2 or 3 is down, cannot perform data retrieval so throw exception
@@ -826,7 +852,7 @@ public class DistributedDBService {
             }
             // try connection to node 1 before inserting new movie data
             node1Repo.tryConnection();
-            System.out.println("addMovie - Inserting new movie data to node 1...");
+            System.out.println("addMovie - Inserting new movie " + movie.getTitle() + " (" + movie.getYear() + ") into node 1...");
             node1Repo.addMovie(movie);
             node1Status = OK; // transaction is ready for commit
             System.out.println("addMovie - Movie data inserted to node 1...");
@@ -851,7 +877,7 @@ public class DistributedDBService {
                 }
                 // try connection to node 2 before inserting new data
                 node2Repo.tryConnection();
-                System.out.println("addMovie - Inserting new movie data to node 2...");
+                System.out.println("addMovie - Inserting new movie " + movie.getTitle() + " (" + movie.getYear() + ") into node 2...");
                 node2Repo.addMovie(movie);
                 node2Status = OK;
                 System.out.println("addMovie - Movie data inserted to node 2...");
@@ -873,7 +899,7 @@ public class DistributedDBService {
                 }
                 // try connection to node 3 before inserting new data
                 node3Repo.tryConnection();
-                System.out.println("addMovie - Inserting new movie data to node 3...");
+                System.out.println("addMovie - Inserting new movie " + movie.getTitle() + " (" + movie.getYear() + ") into node 3...");
                 node3Repo.addMovie(movie);
                 node3Status = OK;
                 System.out.println("addMovie - Movie data inserted to node 3...");
@@ -989,7 +1015,7 @@ public class DistributedDBService {
             }
             // try connection to node 1 before updating movie data
             node1Repo.tryConnection();
-            System.out.println("updateMovie - Updating movie data to node 1...");
+            System.out.println("updateMovie - Updating movie data of " + movie.getTitle() + " (" + movie.getYear() + ") in node 1...");
             node1Repo.updateMovie(movie);
             node1Status = OK; // transaction is ready for commit
 
@@ -1020,7 +1046,7 @@ public class DistributedDBService {
                 }
                 // try connection to node 2 before updating data
                 node2Repo.tryConnection();
-                System.out.println("updateMovie - Updating movie data to node 2...");
+                System.out.println("updateMovie - Updating movie data of " + movie.getTitle() + " (" + movie.getYear() + ") in node 2...");
                 node2Repo.updateMovie(movie);
                 node2Status = OK;
 
@@ -1049,7 +1075,7 @@ public class DistributedDBService {
                 }
                 // try connection to node 3 before updating data
                 node3Repo.tryConnection();
-                System.out.println("updateMovie - Updating movie data to node 3...");
+                System.out.println("updateMovie - Updating movie data of " + movie.getTitle() + " (" + movie.getYear() + ") in node 3...");
                 node3Repo.updateMovie(movie);
                 node3Status = OK;
                 System.out.println("updateMovie - Movie data in node 3 updated...");
@@ -1165,7 +1191,7 @@ public class DistributedDBService {
             }
             // try connection to node 1 before deleting movie data
             node1Repo.tryConnection();
-            System.out.println("deleteMovie - Deleting movie data to node 1...");
+            System.out.println("deleteMovie - Deleting data of movie with ID " + movie.getUuid() + " and year " + movie.getYear() + " from node 1...");
             node1Repo.deleteMovie(movie);
             node1Status = OK; // transaction is ready for commit
             System.out.println("deleteMovie - Movie data in node 1 deleted...");
@@ -1195,7 +1221,7 @@ public class DistributedDBService {
                 }
                 // try connection to node 2 before deleting data
                 node2Repo.tryConnection();
-                System.out.println("deleteMovie - Deleting movie data to node 2...");
+                System.out.println("deleteMovie - Deleting data of movie with ID " + movie.getUuid() + " and year " + movie.getYear() + " from node 2...");
                 node2Repo.deleteMovie(movie);
                 node2Status = OK;
                 System.out.println("deleteMovie - Movie data in node 2 deleted...");
@@ -1217,7 +1243,7 @@ public class DistributedDBService {
                 }
                 // try connection to node 3 before updating data
                 node3Repo.tryConnection();
-                System.out.println("deleteMovie - Deleting movie data to node 3...");
+                System.out.println("deleteMovie - Deleting data of movie with ID " + movie.getUuid() + " and year " + movie.getYear() + " from node 3...");
                 node3Repo.deleteMovie(movie);
                 node3Status = OK;
                 System.out.println("deleteMovie - Movie data in node 3 deleted...");
