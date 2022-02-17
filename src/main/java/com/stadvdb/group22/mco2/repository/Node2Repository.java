@@ -32,6 +32,9 @@ public class Node2Repository {
     public void tryConnection() throws SQLException {
         // try connection to database, if database is down then throw SQLException
         DriverManager.setLoginTimeout(DBConfig.LOGIN_TIME_OUT);
+
+        // TODO: [GLOBAL FAILURE RECOVERY CASE #4 - NODE 2 IS DOWN]
+        // intentionally set wrong password
         Connection connection = DriverManager.getConnection(DBConfig.node2Url, DBConfig.node2Username, DBConfig.node2Password);
 
         // close connection afterwards if successful

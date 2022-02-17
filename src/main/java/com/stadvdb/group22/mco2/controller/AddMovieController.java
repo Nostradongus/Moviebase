@@ -56,19 +56,19 @@ public class AddMovieController {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_TRANS_ERROR);
             model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
             model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
-            return "redirect:err_page";
+            return "err_page";
         // if server is in maintenance
         } catch (ServerMaintenanceException e) {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_SERVER_MAINTENANCE);
             model.addAttribute("mainText", ErrorMessageConfig.SERVER_MAINTENANCE);
             model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
-            return "redirect:err_page";
+            return "err_page";
         // if database is down
         } catch (Exception e) {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_DB_DOWN);
             model.addAttribute("mainText", ErrorMessageConfig.DB_DOWN);
             model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
-            return "redirect:err_page";
+            return "err_page";
         }
     }
 

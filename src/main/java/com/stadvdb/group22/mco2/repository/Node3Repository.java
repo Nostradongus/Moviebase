@@ -28,6 +28,9 @@ public class Node3Repository {
     public void tryConnection() throws SQLException {
         // try connection to database, if database is down then throw SQLException
         DriverManager.setLoginTimeout(DBConfig.LOGIN_TIME_OUT);
+
+        // TODO: [GLOBAL FAILURE RECOVERY CASE #4 - NODE 3 IS DOWN]
+        // intentionally set wrong password
         Connection connection = DriverManager.getConnection(DBConfig.node3Url, DBConfig.node3Username, DBConfig.node3Password);
 
         // close connection afterwards if successful

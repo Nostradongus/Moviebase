@@ -32,6 +32,9 @@ public class Node1Repository {
     public void tryConnection() throws SQLException {
         // try connection to database, if database is down then throw SQLException
         DriverManager.setLoginTimeout(DBConfig.LOGIN_TIME_OUT);
+
+        // TODO: [GLOBAL FAILURE RECOVERY CASE #3 - CENTRAL NODE IS DOWN]
+        // intentionally set wrong password
         Connection connection = DriverManager.getConnection(DBConfig.node1Url, DBConfig.node1Username, DBConfig.node1Password);
 
         // close connection afterwards if successful
@@ -172,6 +175,11 @@ public class Node1Repository {
         return node1.query(sqlQuery, new LogRowMapper(), log.getTs());
     }
 
+    public List<Log> getAllLogsForNode2() {
+        String sqlQuery = "SELECT * FROM t_log WHERE movie_yr < 1980";
+        return node1.query(sqlQuery, new LogRowMapper());
+    }
+
     public int getNode2LogsCount() {
         Integer count = node1.queryForObject("SELECT COUNT(*) FROM t_log WHERE movie_yr < 1980", Integer.class);
         return count == null ? 0 : count;
@@ -180,6 +188,11 @@ public class Node1Repository {
     public List<Log> getLogsForNode3(Log log) {
         String sqlQuery = "SELECT * FROM t_log WHERE movie_yr >= 1980 AND ts > ?";
         return node1.query(sqlQuery, new LogRowMapper(), log.getTs());
+    }
+
+    public List<Log> getAllLogsForNode3() {
+        String sqlQuery = "SELECT * FROM t_log WHERE movie_yr >= 1980";
+        return node1.query(sqlQuery, new LogRowMapper());
     }
 
     public int getNode3LogsCount() {

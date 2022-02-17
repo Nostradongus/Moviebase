@@ -127,11 +127,11 @@ public class DistributedDBService {
 
                 // TODO: [CONCURRENCY CONTROL CASE #2 - NON-REPEATABLE READ]
                 // While sleeping, another user (thread) will update the same movie data - updating the genre
-//                 System.out.println("getMovieByUUID - Before sleeping, movie data: " + movie.getTitle() + " (" + movie.getYear() + ") with genre "  + movie.getGenre());
-//                 System.out.println("getMovieByUUID - Sleeping...");
-//                 TimeUnit.SECONDS.sleep(10);
-//                 System.out.println("getMovieByUUID - Done sleeping!");
-//                 movie = node2Repo.getMovieByUUID(uuid);
+//                System.out.println("getMovieByUUID - Before sleeping, movie data: " + movie.getTitle() + " (" + movie.getYear() + ") with genre "  + movie.getGenre());
+//                System.out.println("getMovieByUUID - Sleeping...");
+//                TimeUnit.SECONDS.sleep(10);
+//                System.out.println("getMovieByUUID - Done sleeping!");
+//                movie = node2Repo.getMovieByUUID(uuid);
 //                System.out.println("getMovieByUUID - After sleeping, movie data: " + movie.getTitle() + " (" + movie.getYear() + ") with genre "  + movie.getGenre());
 
                 node2TxManager.commit(status);
@@ -740,12 +740,12 @@ public class DistributedDBService {
 
             // TODO: [CONCURRENCY CONTROL CASE #2 - PHANTOM READ]
             // While sleeping, another user (thread) will insert new movie data - adding a new movie with year 1893
-//             System.out.println("getMoviesPerYearByPage - Before sleeping, 1893 count: " + reports.getContent().get(0).getCount());
-//             System.out.println("getMoviesPerYearByPage - Sleeping...");
-//             TimeUnit.SECONDS.sleep(10); // do some work
-//             System.out.println("getMoviesPerYearByPage - Done sleeping!");
-//             reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page,size));
-//             System.out.println("getMoviesPerYearByPage - After sleeping, 1893 count: " + reports.getContent().get(0).getCount());
+//            System.out.println("getMoviesPerYearByPage - Before sleeping, 1893 count: " + reports.getContent().get(0).getCount());
+//            System.out.println("getMoviesPerYearByPage - Sleeping...");
+//            TimeUnit.SECONDS.sleep(10); // do some work
+//            System.out.println("getMoviesPerYearByPage - Done sleeping!");
+//            reports = node1Repo.getMoviesPerYearByPage(PageRequest.of(page,size));
+//            System.out.println("getMoviesPerYearByPage - After sleeping, 1893 count: " + reports.getContent().get(0).getCount());
 
             node1TxManager.commit(status);
             System.out.println("getMoviesPerYearByPage - Retrieved data from node 1 successfully...");
@@ -855,11 +855,20 @@ public class DistributedDBService {
             System.out.println("addMovie - Inserting new movie " + movie.getTitle() + " (" + movie.getYear() + ") into node 1...");
             node1Repo.addMovie(movie);
             node1Status = OK; // transaction is ready for commit
+
+            // COMMENT THIS AS WELL FOR GLOBAL FAILURE RECOVERY CASE #1
             System.out.println("addMovie - Movie data inserted to node 1...");
+
+            // TODO: [GLOBAL FAILURE RECOVERY CASE #1 - CENTRAL NODE TRANSACTION WRITE FAILURE]
+            // intentionally rollback node 1 transaction and set status to ERROR
+//            node1TxManager.rollback(node1TxStatus);
+//            node1Status = ERROR;
+//            System.out.println("addMovie - Write error occurred during transaction in node 1...");
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("addMovie - Node 1 is currently down...");
             node1TxManager.rollback(node1TxStatus);
+            node1Down = true;
             node1Status = UNAVAILABLE;
         } catch (DataAccessException exception) {
             // transaction error during insertion, rollback and don't redo
@@ -880,7 +889,15 @@ public class DistributedDBService {
                 System.out.println("addMovie - Inserting new movie " + movie.getTitle() + " (" + movie.getYear() + ") into node 2...");
                 node2Repo.addMovie(movie);
                 node2Status = OK;
+
+                // COMMENT THIS AS WELL FOR GLOBAL FAILURE RECOVERY CASE #2
                 System.out.println("addMovie - Movie data inserted to node 2...");
+
+                // TODO: [GLOBAL FAILURE RECOVERY CASE #2 - NODE 2 TRANSACTION WRITE FAILURE]
+                // intentionally rollback node 2 transaction then set node 2 status to ERROR
+//                node2TxManager.rollback(node2TxStatus);
+//                node2Status = ERROR;
+//                System.out.println("addMovie - Write error occurred during transaction in node 2...");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("addMovie - Node 2 is currently down...");
@@ -932,9 +949,19 @@ public class DistributedDBService {
             try {
                 // add transaction log
                 node2Repo.addLog(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+
+                // COMMENT THIS AS WELL FOR GLOBAL FAILURE RECOVERY CASE #2
                 node2TxManager.commit(node2TxStatus);
+
+                // TODO: [GLOBAL FAILURE RECOVERY CASE #2 - NODE 2 TRANSACTION COMMIT FAILURE]
+                // intentionally rollback node 2 transaction and set node 2 status to COMMIT_ERROR
+//                node2TxManager.rollback(node2TxStatus);
+//                node2Down = true;
+//                node2Status = COMMIT_ERROR;
+//                System.out.println("addMovie - Error occurred during transaction commit in node 2...");
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node2Down = true;
                 node2Status = COMMIT_ERROR;
             }
         } else if (node3Status == OK) {
@@ -945,6 +972,7 @@ public class DistributedDBService {
                 node3TxManager.commit(node3TxStatus);
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node3Down = true;
                 node3Status = COMMIT_ERROR;
             }
         }
@@ -952,9 +980,19 @@ public class DistributedDBService {
         if (node1Status == OK) {
             try {
                 node1Repo.addLog(new Log(tUuid, "INSERT", movie.getUuid(), movie.getYear(), getCurrTimestamp()));
+
+                // COMMENT THIS AS WELL FOR GLOBAL FAILURE RECOVERY CASE #1
                 node1TxManager.commit(node1TxStatus);
+
+                // TODO: [GLOBAL FAILURE RECOVERY CASE #1 - CENTRAL NODE TRANSACTION COMMIT FAILURE]
+                // intentionally rollback node 1 transaction and set node 1 transaction status to COMMIT_ERROR
+//                node1TxManager.rollback(node1TxStatus);
+//                node1Down = true;
+//                node1Status = COMMIT_ERROR;
+//                System.out.println("addMovie - Error occurred during transaction commit in node 1...");
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node1Down = true;
                 node1Status = COMMIT_ERROR;
             }
         }
@@ -1019,16 +1057,12 @@ public class DistributedDBService {
             node1Repo.updateMovie(movie);
             node1Status = OK; // transaction is ready for commit
 
-            // TODO: [CONCURRENCY CONTROL CASE #3 - UPDATE]
-//            System.out.println("updateMovie - Sleeping...");
-//            TimeUnit.SECONDS.sleep(10); // do some work
-//            System.out.println("updateMovie - Done sleeping!");
-
             System.out.println("updateMovie - Movie data in node 1 updated...");
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("updateMovie - Node 1 is currently down...");
             node1TxManager.rollback(node1TxStatus);
+            node1Down = true;
             node1Status = UNAVAILABLE;
         } catch (DataAccessException exception) {
             // transaction error during insertion, rollback and don't redo
@@ -1056,11 +1090,18 @@ public class DistributedDBService {
 //                TimeUnit.SECONDS.sleep(10); // do some work
 //                System.out.println("updateMovie - Done sleeping!");
 
+                // TODO: [CONCURRENCY CONTROL CASE #3 - UPDATE]
+                // Sleep for 10 seconds, while sleeping another user (thread) will delete the same movie data
+//                System.out.println("updateMovie - Sleeping...");
+//                TimeUnit.SECONDS.sleep(10); // do some work
+//                System.out.println("updateMovie - Done sleeping!");
+
                 System.out.println("updateMovie - Movie data in node 2 updated...");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("updateMovie - Node 2 is currently down...");
                 node2TxManager.rollback(node2TxStatus);
+                node2Down = true;
                 node2Status = UNAVAILABLE;
             } catch (DataAccessException exception) {
                 System.out.println("updateMovie - Error occurred during transaction in node 2...");
@@ -1083,6 +1124,7 @@ public class DistributedDBService {
                 // node 3 is currently down
                 System.out.println("updateMovie - Node 3 is currently down...");
                 node3TxManager.rollback(node3TxStatus);
+                node3Down = true;
                 node3Status = UNAVAILABLE;
             } catch (DataAccessException exception) {
                 System.out.println("updateMovie - Error occurred during transaction in node 3...");
@@ -1111,6 +1153,7 @@ public class DistributedDBService {
                 node2TxManager.commit(node2TxStatus);
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node2Down = true;
                 node2Status = COMMIT_ERROR;
             }
         } else if (node3Status == OK) {
@@ -1121,6 +1164,7 @@ public class DistributedDBService {
                 node3TxManager.commit(node3TxStatus);
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node3Down = true;
                 node3Status = COMMIT_ERROR;
             }
         }
@@ -1131,6 +1175,7 @@ public class DistributedDBService {
                 node1TxManager.commit(node1TxStatus);
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node1Down = true;
                 node1Status = COMMIT_ERROR;
             }
         }
@@ -1195,15 +1240,11 @@ public class DistributedDBService {
             node1Repo.deleteMovie(movie);
             node1Status = OK; // transaction is ready for commit
             System.out.println("deleteMovie - Movie data in node 1 deleted...");
-
-            // TODO: [CONCURRENCY CONTROL CASE #3 - DELETE]
-//            System.out.println("deleteMovie - Sleeping...");
-//            TimeUnit.SECONDS.sleep(10); // do some work
-//            System.out.println("deleteMovie - Done sleeping!");
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("deleteMovie - Node 1 is currently down...");
             node1TxManager.rollback(node1TxStatus);
+            node1Down = true;
             node1Status = UNAVAILABLE;
         } catch (DataAccessException exception) {
             // transaction error during insertion, rollback and don't redo
@@ -1225,10 +1266,17 @@ public class DistributedDBService {
                 node2Repo.deleteMovie(movie);
                 node2Status = OK;
                 System.out.println("deleteMovie - Movie data in node 2 deleted...");
+
+                // TODO: [CONCURRENCY CONTROL CASE #3 - DELETE]
+                // Sleep for 10 seconds, while sleeping another user (thread) will delete the same movie data
+//            System.out.println("deleteMovie - Sleeping...");
+//            TimeUnit.SECONDS.sleep(10); // do some work
+//            System.out.println("deleteMovie - Done sleeping!");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("deleteMovie - Node 2 is currently down...");
                 node2TxManager.rollback(node2TxStatus);
+                node2Down = true;
                 node2Status = UNAVAILABLE;
             } catch (DataAccessException exception) {
                 System.out.println("deleteMovie - Error occurred during transaction in node 2...");
@@ -1251,6 +1299,7 @@ public class DistributedDBService {
                 // node 3 is currently down
                 System.out.println("deleteMovie - Node 3 is currently down...");
                 node3TxManager.rollback(node3TxStatus);
+                node3Down = true;
                 node3Status = UNAVAILABLE;
             } catch (DataAccessException exception) {
                 System.out.println("deleteMovie - Error occurred during transaction in node 3...");
@@ -1279,6 +1328,7 @@ public class DistributedDBService {
                 node2TxManager.commit(node2TxStatus);
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node2Down = true;
                 node2Status = COMMIT_ERROR;
             }
         } else if (node3Status == OK) {
@@ -1289,6 +1339,7 @@ public class DistributedDBService {
                 node3TxManager.commit(node3TxStatus);
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node3Down = true;
                 node3Status = COMMIT_ERROR;
             }
         }
@@ -1299,6 +1350,7 @@ public class DistributedDBService {
                 node1TxManager.commit(node1TxStatus);
             } catch (Exception e) {
                 // failure occurred during commit, set for recovery
+                node1Down = true;
                 node1Status = COMMIT_ERROR;
             }
         }
@@ -1336,6 +1388,7 @@ public class DistributedDBService {
     private void resyncDB() {
         // initial check
         if (resyncEnabled) {
+            System.out.println("resyncDB - Checking if nodes are in consistent state...");
             try {
                 // check if all nodes are online
                 node1Repo.tryConnection();
@@ -1345,14 +1398,15 @@ public class DistributedDBService {
                 // check if nodes are in consistent state (equal number of logs between nodes)
                 if (node1Repo.getNode2LogsCount() == node2Repo.getLogsCount() && node1Repo.getNode3LogsCount() == node3Repo.getLogsCount()) {
                     // disable re-sync as not needed
-                    System.out.println("resyncDB - Nodes are in consistent state");
+                    System.out.println("resyncDB - Nodes are in consistent state...");
                     resyncEnabled = false;
                     node1Down = false;
                     node2Down = false;
                     node3Down = false;
                 }
             } catch (Exception exception) {
-                // at least one node is down, so cannot perform re-sync
+                // at least one node is down, cannot perform re-sync
+                System.out.println("resyncDB - At least one node is down, cancelling recovery initial check operation...");
                 resyncEnabled = false;
             }
         }
@@ -1373,6 +1427,7 @@ public class DistributedDBService {
 
             // if node 1 was down during a transaction
             while (node1Recovery) {
+                System.out.println("resyncDB - Checking and recovering node 1...");
                 // check if all nodes are up in order to perform re-syncing
                 try {
                     node1Repo.tryConnection();
@@ -1434,7 +1489,7 @@ public class DistributedDBService {
                     }
 
                     // node 1 recovered
-                    System.out.println("resyncDB - Node 1 recovery finished...");
+                    System.out.println("resyncDB - Node 1 recovery process finished...");
                     node1Down = false;
                     node1Recovery = false;
                 } catch (SQLException sqlException) {
@@ -1461,7 +1516,7 @@ public class DistributedDBService {
                     if (recentNode2Log != null) {
                         node1Logs = node1Repo.getLogsForNode2(recentNode2Log);
                     } else {
-                        node1Logs = node1Repo.getAllLogs();
+                        node1Logs = node1Repo.getAllLogsForNode2();
                     }
 
                     // update node 2 db with node 1 logs
@@ -1484,7 +1539,7 @@ public class DistributedDBService {
                     }
 
                     // node 2 recovered
-                    System.out.println("resyncDB - Node 2 recovery finished...");
+                    System.out.println("resyncDB - Node 2 recovery process finished...");
                     node2Down = false;
                     node2Recovery = false;
                 } catch (SQLException sqlException) {
@@ -1507,7 +1562,7 @@ public class DistributedDBService {
                     if (recentNode3Log != null) {
                         node1Logs = node1Repo.getLogsForNode3(recentNode3Log);
                     } else {
-                        node1Logs = node1Repo.getAllLogs();
+                        node1Logs = node1Repo.getAllLogsForNode3();
                     }
 
                     // update node 3 db with node 1 logs
@@ -1524,13 +1579,13 @@ public class DistributedDBService {
                                 } else {
                                     node3Repo.deleteMovie(movie);
                                 }
-                                node3Repo.addLog(node1Logs.get(i));
                             }
+                            node3Repo.addLog(node1Logs.get(i));
                         }
                     }
 
                     // node 3 recovered
-                    System.out.println("resyncDB - Node 3 recovery finished...");
+                    System.out.println("resyncDB - Node 3 recovery process finished...");
                     node3Down = false;
                     node3Recovery = false;
                 } catch (SQLException sqlException) {
@@ -1555,6 +1610,7 @@ public class DistributedDBService {
 
             // if all nodes have recovered successfully, disable re-sync and delete logs from each node to have more space
             while (node1Recovered && node2Recovered && node3Recovered && maintenance) {
+                System.out.println("resyncDB - Deleting logs from each node...");
                 // try deleting logs on each node
                 try {
                     // try connection first to each node
@@ -1574,9 +1630,11 @@ public class DistributedDBService {
                     System.out.println("resyncDB - All logs deleted from each node...");
                 } catch (SQLException sqlException) {
                     // at least one node is down, cannot perform deletion of logs
+                    System.out.println("resyncDB - At least one node is down during deletion of logs, cancelling operation...");
                     maintenance = false;
                 } catch (Exception exception) {
                     // error occurred during query, repeat process
+                    System.out.println("resyncDB - Error occurred during deletion of logs, repeating operation");
                 }
             }
 

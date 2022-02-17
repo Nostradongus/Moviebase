@@ -55,7 +55,7 @@ public class UpdateMovieController {
             model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_SERVER_MAINTENANCE);
             model.addAttribute("mainText", ErrorMessageConfig.SERVER_MAINTENANCE);
             model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
-            return "redirect:err_page";
+            return "err_page";
         // if database is down
         } catch (Exception e) {
             this.movieUUID = "";
