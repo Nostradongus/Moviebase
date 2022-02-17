@@ -1465,6 +1465,8 @@ public class DistributedDBService {
                                 } else {
                                     node1Repo.deleteMovie(movie);
                                 }
+                            } else {
+                                node1Repo.deleteMovie(node1Repo.getMovieByUUID(node2Logs.get(i).getMovieUuid()));
                             }
                             node1Repo.addLog(node2Logs.get(i));
                         }
@@ -1483,6 +1485,8 @@ public class DistributedDBService {
                                 } else {
                                     node1Repo.deleteMovie(movie);
                                 }
+                            } else {
+                                node1Repo.deleteMovie(node1Repo.getMovieByUUID(node3Logs.get(i).getMovieUuid()));
                             }
                             node1Repo.addLog(node3Logs.get(i));
                         }
@@ -1533,6 +1537,8 @@ public class DistributedDBService {
                                 } else {
                                     node2Repo.deleteMovie(movie);
                                 }
+                            } else {
+                                node2Repo.deleteMovie(node2Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid()));
                             }
                             node2Repo.addLog(node1Logs.get(i));
                         }
@@ -1579,6 +1585,8 @@ public class DistributedDBService {
                                 } else {
                                     node3Repo.deleteMovie(movie);
                                 }
+                            } else {
+                                node3Repo.deleteMovie(node3Repo.getMovieByUUID(node1Logs.get(i).getMovieUuid()));
                             }
                             node3Repo.addLog(node1Logs.get(i));
                         }
