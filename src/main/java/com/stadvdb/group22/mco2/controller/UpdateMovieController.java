@@ -1,9 +1,11 @@
 package com.stadvdb.group22.mco2.controller;
 
 import com.stadvdb.group22.mco2.config.ErrorMessageConfig;
+import com.stadvdb.group22.mco2.exception.ServerMaintenanceException;
 import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Movie;
 import com.stadvdb.group22.mco2.service.DistributedDBService;
+import org.apache.catalina.Server;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -48,6 +50,12 @@ public class UpdateMovieController {
             model.addAttribute("mainText", ErrorMessageConfig.TRANS_ERROR);
             model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
             return "err_page";
+        // if server is in maintenance
+        } catch (ServerMaintenanceException e) {
+            model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_SERVER_MAINTENANCE);
+            model.addAttribute("mainText", ErrorMessageConfig.SERVER_MAINTENANCE);
+            model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+            return "redirect:err_page";
         // if database is down
         } catch (Exception e) {
             this.movieUUID = "";
@@ -80,8 +88,13 @@ public class UpdateMovieController {
         try {
             distributedDBService.updateMovie(movie);
             return new RedirectView ("/");
+        // if there is an error with the transaction
         } catch (TransactionErrorException e) {
             return new RedirectView ("/error");
+        // if server is in maintenance
+        } catch (ServerMaintenanceException e) {
+            return new RedirectView ("/maintenance");
+        // if database is down
         } catch (Exception e) {
             return new RedirectView ("/database_down");
         }

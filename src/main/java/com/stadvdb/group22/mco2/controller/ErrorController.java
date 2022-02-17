@@ -24,4 +24,12 @@ public class ErrorController {
         model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
         return "err_page";
     }
+
+    @RequestMapping(value = "/maintenance", method = RequestMethod.GET)
+    public String getMaintenancePage (Model model) {
+        model.addAttribute("tabTitle", ErrorMessageConfig.TITLE_SERVER_MAINTENANCE);
+        model.addAttribute("mainText", ErrorMessageConfig.SERVER_MAINTENANCE);
+        model.addAttribute("subText", ErrorMessageConfig.SUB_TEXT);
+        return "err_page";
+    }
 }

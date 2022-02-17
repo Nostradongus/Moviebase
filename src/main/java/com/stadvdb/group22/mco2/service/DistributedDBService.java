@@ -1,6 +1,7 @@
 package com.stadvdb.group22.mco2.service;
 
 import com.stadvdb.group22.mco2.config.DBConfig;
+import com.stadvdb.group22.mco2.exception.ServerMaintenanceException;
 import com.stadvdb.group22.mco2.exception.TransactionErrorException;
 import com.stadvdb.group22.mco2.model.Log;
 import com.stadvdb.group22.mco2.model.Movie;
@@ -102,8 +103,7 @@ public class DistributedDBService {
     public Movie getMovieByUUID (String uuid, int year) throws Exception {
         // if at maintenance, cancel operation and inform user
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable distributed db re-sync before performing operation
@@ -201,8 +201,7 @@ public class DistributedDBService {
 
     public Page<Movie> getMoviesByPage(int page, int size) throws Exception {
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable resync db
@@ -293,8 +292,7 @@ public class DistributedDBService {
 
     public Page<Movie> searchMoviesByPage(Movie movie, int page, int size) throws Exception {
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable db resync
@@ -386,8 +384,7 @@ public class DistributedDBService {
 
     public Page<Report> getMoviesPerGenreByPage(int page, int size) throws Exception {
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable resync db
@@ -491,8 +488,7 @@ public class DistributedDBService {
 
     public Page<Report> getMoviesPerDirectorByPage(int page, int size) throws Exception {
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable resync db
@@ -596,8 +592,7 @@ public class DistributedDBService {
 
     public Page<Report> getMoviesPerActorByPage(int page, int size) throws Exception {
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable resync db
@@ -701,8 +696,7 @@ public class DistributedDBService {
 
     public Page<Report> getMoviesPerYearByPage(int page, int size) throws Exception {
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable resync db
@@ -807,8 +801,7 @@ public class DistributedDBService {
         // STRATEGY: Insert new movie data to node 1 first then insert to node 2 or 3 depending on year of new movie
         // RECOVERY METHOD: Deferred Modification
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable db resync
@@ -836,6 +829,7 @@ public class DistributedDBService {
             System.out.println("addMovie - Inserting new movie data to node 1...");
             node1Repo.addMovie(movie);
             node1Status = OK; // transaction is ready for commit
+            System.out.println("addMovie - Movie data inserted to node 1...");
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("addMovie - Node 1 is currently down...");
@@ -860,6 +854,7 @@ public class DistributedDBService {
                 System.out.println("addMovie - Inserting new movie data to node 2...");
                 node2Repo.addMovie(movie);
                 node2Status = OK;
+                System.out.println("addMovie - Movie data inserted to node 2...");
             } catch (SQLException sqlException) {
                 // node 2 is currently down
                 System.out.println("addMovie - Node 2 is currently down...");
@@ -881,6 +876,7 @@ public class DistributedDBService {
                 System.out.println("addMovie - Inserting new movie data to node 3...");
                 node3Repo.addMovie(movie);
                 node3Status = OK;
+                System.out.println("addMovie - Movie data inserted to node 3...");
             } catch (SQLException sqlException) {
                 // node 3 is currently down
                 System.out.println("addMovie - Node 3 is currently down...");
@@ -968,8 +964,7 @@ public class DistributedDBService {
         // STRATEGY: Update existing movie data to node 1 first then update to node 2 or 3 depending on year of new movie
         // RECOVERY METHOD: Deferred Modification
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable db resync
@@ -997,12 +992,13 @@ public class DistributedDBService {
             System.out.println("updateMovie - Updating movie data to node 1...");
             node1Repo.updateMovie(movie);
             node1Status = OK; // transaction is ready for commit
-            System.out.println("updateMovie - Movie data in node 1 updated...");
 
             // TODO: [CONCURRENCY CONTROL CASE #3 - UPDATE]
 //            System.out.println("updateMovie - Sleeping...");
 //            TimeUnit.SECONDS.sleep(10); // do some work
 //            System.out.println("updateMovie - Done sleeping!");
+
+            System.out.println("updateMovie - Movie data in node 1 updated...");
         } catch (SQLException sqlException) {
             // node 1 is currently down
             System.out.println("updateMovie - Node 1 is currently down...");
@@ -1144,8 +1140,7 @@ public class DistributedDBService {
         // STRATEGY: Delete existing movie data on node 1 first then deleting on node 2 or 3 depending on year of new movie
         // RECOVERY METHOD: Deferred Modification
         if (maintenance) {
-            System.out.println("Server in maintenance...");
-            throw new Exception ();
+            throw new ServerMaintenanceException("Server in maintenance...");
         }
 
         // disable db resync
